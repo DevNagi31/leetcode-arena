@@ -26,7 +26,7 @@ import PasswordChange from './components/PasswordChange';
 import ConfirmDialog from './components/ConfirmDialog';
 import './styles/App.css';
 
-const API_URL = '/api';
+const API_URL = 'https://leetcode-arena-production.up.railway.app';
 
 function App() {
   const [view, setView] = useState('landing');
