@@ -685,3 +685,4 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
 }
 
 export default App;
+// Trigger rebuild
