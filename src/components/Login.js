@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://leetcode-arena-production.up.railway.app/api';
+const API_URL = 'https://leetcode-arena-production.up.railway.app';
 
 const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -12,7 +12,7 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, formData);
+      const response = await axios.post(`${API_URL}/api/auth/login`, formData);
       
       localStorage.setItem('token', response.data.token);
       setToken(response.data.token);
