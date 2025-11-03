@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://leetcode-arena-production.up.railway.app/api';
+
 const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -10,7 +12,7 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/login', formData);
+      const response = await axios.post(`${API_URL}/auth/login`, formData);
       
       localStorage.setItem('token', response.data.token);
       setToken(response.data.token);
@@ -28,7 +30,7 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
   return (
     <div className="form-container">
       <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
-      <h2 className="form-title">LOGIN</h2>
+      <h2 className="form-title">PLAYER LOGIN</h2>
       
       <form className="pixel-form" onSubmit={handleSubmit}>
         <div className="form-group">
@@ -60,13 +62,13 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
         </button>
 
         <div className="form-footer">
-          <span style={{ color: '#888' }}>Don't have an account?</span>
+          <span style={{ color: 'var(--text-secondary)' }}>Don't have an account?</span>
           <button 
             type="button"
             className="link-button" 
             onClick={() => onNavigate('leetcode-connect')}
           >
-            SIGN UP
+            REGISTER
           </button>
         </div>
       </form>
