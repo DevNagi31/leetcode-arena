@@ -1,3 +1,6 @@
+cd ~/Desktop/leetcode-arena-game
+
+cat > src/App.js << 'ENDOFFILE'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
@@ -17,7 +20,11 @@ import {
   Award,
   User,
   Medal,
-  TrendingUp
+  TrendingUp,
+  UserPlus,
+  Globe,
+  Building2,
+  Plus
 } from 'lucide-react';
 import Toast from './components/Toast';
 import Login from './components/Login';
@@ -104,6 +111,7 @@ function App() {
       </div>
       
       {view === 'landing' && <LandingPage onNavigate={changeView} />}
+      {view === 'auth-choice' && <AuthChoice onNavigate={changeView} />}
       {view === 'login' && <Login onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} showToast={showToast} />}
       {view === 'leetcode-connect' && <LeetCodeConnect onNavigate={changeView} setToken={setToken} setError={setError} error={error} showToast={showToast} />}
       {view === 'education-info' && <EducationInfo onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
@@ -142,18 +150,34 @@ function LandingPage({ onNavigate }) {
       <div className="game-tagline">COMPETE • LEVEL UP • DOMINATE</div>
       
       <div className="menu-options">
-        <button className="pixel-button primary" onClick={() => onNavigate('leetcode-connect')}>
+        <button className="pixel-button primary" onClick={() => onNavigate('auth-choice')}>
           <Zap size={18} strokeWidth={2.5} /> START QUEST
-        </button>
-        <button className="pixel-button" onClick={() => onNavigate('login')}>
-          <Lock size={18} strokeWidth={2.5} /> LOGIN
         </button>
         <button className="pixel-button secondary" onClick={() => onNavigate('leaderboard')}>
           <Trophy size={18} strokeWidth={2.5} /> LEADERBOARD
         </button>
       </div>
+    </div>
+  );
+}
+
+function AuthChoice({ onNavigate }) {
+  return (
+    <div className="form-container">
+      <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
+      <h2 className="form-title">JOIN THE ARENA</h2>
+      <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>
+        Track yourself among your peers and compete on the leaderboard
+      </p>
       
-      <p className="game-info">COMPETE • LEVEL UP • DOMINATE</p>
+      <div className="auth-choice-grid">
+        <button className="pixel-button primary full-width" onClick={() => onNavigate('leetcode-connect')}>
+          <UserPlus size={18} strokeWidth={2.5} /> SIGN UP
+        </button>
+        <button className="pixel-button full-width" onClick={() => onNavigate('login')}>
+          <Lock size={18} strokeWidth={2.5} /> LOGIN
+        </button>
+      </div>
     </div>
   );
 }
@@ -197,7 +221,7 @@ function LeetCodeConnect({ onNavigate, setToken, setError, error, showToast }) {
 
   return (
     <div className="form-container">
-      <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
+      <button className="back-button" onClick={() => onNavigate('auth-choice')}>← BACK</button>
       <h2 className="form-title">CONNECT LEETCODE</h2>
       {error && <div className="error-message">{error}</div>}
       <form className="pixel-form" onSubmit={handleConnect}>
@@ -244,10 +268,20 @@ function LeetCodeConnect({ onNavigate, setToken, setError, error, showToast }) {
 
 function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, showToast }) {
   const [formData, setFormData] = useState({
-    username: '', email: '', password: '', educationLevel: '', institutionName: '', year: ''
+    username: '', 
+    email: '', 
+    password: '', 
+    country: '',
+    educationLevel: '', 
+    institutionName: '', 
+    year: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, message: '', color: 'var(--text-tertiary)' });
+  const [countries, setCountries] = useState([]);
+  const [universities, setUniversities] = useState([]);
+  const [searchingUni, setSearchingUni] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   const educationLevels = ['High School', 'Undergraduate', 'Graduate', 'PhD', 'Bootcamp', 'Self-Taught', 'Other'];
   const yearOptions = {
@@ -258,6 +292,41 @@ function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, 
     'Bootcamp': ['Month 1-3', 'Month 4-6', 'Month 7-9', 'Month 10-12'],
     'Self-Taught': ['Beginner', 'Intermediate', 'Advanced'],
     'Other': ['N/A']
+  };
+
+  useEffect(() => {
+    fetchCountries();
+  }, []);
+
+  useEffect(() => {
+    if (formData.country && formData.institutionName.length >= 2) {
+      searchUniversities(formData.institutionName);
+    }
+  }, [formData.institutionName, formData.country]);
+
+  const fetchCountries = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/universities/countries`);
+      setCountries(response.data);
+    } catch (error) {
+      console.error('Failed to fetch countries');
+    }
+  };
+
+  const searchUniversities = async (name) => {
+    if (!formData.country) return;
+    
+    setSearchingUni(true);
+    try {
+      const response = await axios.get(`${API_URL}/universities/search`, {
+        params: { name, country: formData.country }
+      });
+      setUniversities(response.data);
+    } catch (error) {
+      console.error('Failed to search universities');
+    } finally {
+      setSearchingUni(false);
+    }
   };
 
   const checkPasswordStrength = (password) => {
@@ -296,7 +365,9 @@ function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, 
     try {
       const leetcodeData = JSON.parse(localStorage.getItem('tempLeetCodeData'));
       const response = await axios.post(`${API_URL}/auth/register`, {
-        ...formData, leetcodeUsername: leetcodeData.username, leetcodeData: leetcodeData
+        ...formData, 
+        leetcodeUsername: leetcodeData.username, 
+        leetcodeData: leetcodeData
       });
       
       localStorage.setItem('token', response.data.token);
@@ -345,6 +416,69 @@ function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, 
             </div>
           )}
         </div>
+        
+        <div className="form-group">
+          <label>COUNTRY</label>
+          <select className="pixel-input" value={formData.country}
+            onChange={(e) => setFormData({...formData, country: e.target.value, institutionName: ''})} required>
+            <option value="">Select Country</option>
+            {countries.map(country => <option key={country} value={country}>{country}</option>)}
+          </select>
+        </div>
+
+        {formData.country && (
+          <>
+            <div className="form-group">
+              <label>INSTITUTION</label>
+              {!showCustomInput ? (
+                <>
+                  <input 
+                    type="text" 
+                    className="pixel-input" 
+                    placeholder="Start typing to search..."
+                    value={formData.institutionName} 
+                    onChange={(e) => setFormData({...formData, institutionName: e.target.value})}
+                    list="universities"
+                    required 
+                  />
+                  <datalist id="universities">
+                    {universities.map((uni, idx) => (
+                      <option key={idx} value={uni.name}>{uni.name}</option>
+                    ))}
+                  </datalist>
+                  <button 
+                    type="button" 
+                    className="link-button" 
+                    onClick={() => setShowCustomInput(true)}
+                    style={{ marginTop: '8px', fontSize: '12px' }}
+                  >
+                    <Plus size={12} /> Can't find your school? Add it manually
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input 
+                    type="text" 
+                    className="pixel-input" 
+                    placeholder="Enter your institution name"
+                    value={formData.institutionName} 
+                    onChange={(e) => setFormData({...formData, institutionName: e.target.value})}
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    className="link-button" 
+                    onClick={() => setShowCustomInput(false)}
+                    style={{ marginTop: '8px', fontSize: '12px' }}
+                  >
+                    ← Back to search
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
         <div className="form-group">
           <label>EDUCATION LEVEL</label>
           <select className="pixel-input" value={formData.educationLevel}
@@ -353,11 +487,7 @@ function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, 
             {educationLevels.map(level => <option key={level} value={level}>{level}</option>)}
           </select>
         </div>
-        <div className="form-group">
-          <label>INSTITUTION</label>
-          <input type="text" className="pixel-input" placeholder="Your school/university"
-            value={formData.institutionName} onChange={(e) => setFormData({...formData, institutionName: e.target.value})} required />
-        </div>
+        
         {formData.educationLevel && (
           <div className="form-group">
             <label>YEAR</label>
@@ -368,6 +498,7 @@ function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, 
             </select>
           </div>
         )}
+        
         <button type="submit" className="pixel-button primary full-width" disabled={submitting || passwordStrength.score < 3}>
           {submitting ? 'ENTERING...' : 'ENTER ARENA'}
         </button>
@@ -381,6 +512,22 @@ function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
   const [refreshing, setRefreshing] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+
+  useEffect(() => {
+    const autoRefresh = async () => {
+      try {
+        const response = await axios.post(`${API_URL}/users/refresh-stats`, {}, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        setUser(response.data.user);
+        console.log('Stats auto-refreshed on dashboard load');
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+      }
+    };
+    
+    autoRefresh();
+  }, []);
 
   if (!user) return <LoadingScreen />;
 
@@ -440,7 +587,8 @@ function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
           </div>
           <div>
             <h2>{user.username}</h2>
-            <p>{user.institutionName} • {user.year}</p>
+            <p><Globe size={12} style={{ display: 'inline', marginRight: '4px' }} />{user.country}</p>
+            <p><Building2 size={12} style={{ display: 'inline', marginRight: '4px' }} />{user.institutionName} • {user.year}</p>
             <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', letterSpacing: '0.3px' }}>
               LeetCode: {user.leetcodeUsername}
             </p>
@@ -484,6 +632,7 @@ function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
           <div><strong>LeetCode:</strong> {user.leetcodeUsername}</div>
           <div><strong>Problems:</strong> {user.problems} (E:{user.easy} M:{user.medium} H:{user.hard})</div>
           <div><strong>Streak:</strong> {user.streak} | <strong>Score:</strong> {user.score} | <strong>Level:</strong> {user.level}</div>
+          <div><strong>Country:</strong> {user.country} | <strong>Institution:</strong> {user.institutionName}</div>
         </div>
       )}
 
@@ -554,16 +703,32 @@ function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
 
 function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCollege, setSelectedCollege] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('all');
+  const [selectedInstitution, setSelectedInstitution] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [countries, setCountries] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
+  const [viewMode, setViewMode] = useState('global');
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchLeaderboard();
+    fetchCountries();
+  }, [selectedCountry, selectedInstitution]);
 
-  const fetchUsers = async () => {
+  useEffect(() => {
+    if (selectedCountry && selectedCountry !== 'all') {
+      fetchInstitutions(selectedCountry);
+    }
+  }, [selectedCountry]);
+
+  const fetchLeaderboard = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/leaderboard`);
+      const params = {};
+      if (selectedCountry !== 'all') params.country = selectedCountry;
+      if (selectedInstitution !== 'all') params.institution = selectedInstitution;
+
+      const response = await axios.get(`${API_URL}/leaderboard`, { params });
       setUsers(response.data || []);
     } catch (error) {
       showToast('Failed to load leaderboard', 'error');
@@ -573,21 +738,48 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    if (!user || !user.username || !user.institutionName) return false;
-    const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.institutionName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCollege = !selectedCollege || user.institutionName === selectedCollege;
-    return matchesSearch && matchesCollege;
-  });
-
-  const colleges = [...new Set(users.filter(u => u && u.institutionName).map(u => u.institutionName))];
-  const getTopThree = () => {
-    const top = filteredUsers.slice(0, 3);
-    return top.concat(Array(3 - top.length).fill(null));
+  const fetchCountries = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/leaderboard/countries`);
+      setCountries(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch countries');
+    }
   };
 
-  const topThree = getTopThree();
+  const fetchInstitutions = async (country) => {
+    try {
+      const params = country !== 'all' ? { country } : {};
+      const response = await axios.get(`${API_URL}/leaderboard/institutions`, { params });
+      setInstitutions(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch institutions');
+    }
+  };
+
+  const handleViewChange = (mode) => {
+    setViewMode(mode);
+    if (mode === 'global') {
+      setSelectedCountry('all');
+      setSelectedInstitution('all');
+    } else if (mode === 'country' && currentUser) {
+      setSelectedCountry(currentUser.country);
+      setSelectedInstitution('all');
+    } else if (mode === 'institution' && currentUser) {
+      setSelectedCountry(currentUser.country);
+      setSelectedInstitution(currentUser.institutionName);
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    if (!user || !user.username) return false;
+    const matchesSearch = user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (user.institutionName && user.institutionName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (user.country && user.country.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesSearch;
+  });
+
+  const topThree = filteredUsers.slice(0, 3).concat(Array(Math.max(0, 3 - filteredUsers.length)).fill(null));
   const restUsers = filteredUsers.slice(3);
 
   if (loading) return <div className="leaderboard"><div className="loading-message">LOADING</div></div>;
@@ -601,6 +793,31 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
         </button>
       </div>
 
+      <div className="leaderboard-tabs">
+        <button 
+          className={`tab-button ${viewMode === 'global' ? 'active' : ''}`}
+          onClick={() => handleViewChange('global')}
+        >
+          <Globe size={16} /> GLOBAL
+        </button>
+        {currentUser && (
+          <>
+            <button 
+              className={`tab-button ${viewMode === 'country' ? 'active' : ''}`}
+              onClick={() => handleViewChange('country')}
+            >
+              🌍 MY COUNTRY
+            </button>
+            <button 
+              className={`tab-button ${viewMode === 'institution' ? 'active' : ''}`}
+              onClick={() => handleViewChange('institution')}
+            >
+              <Building2 size={16} /> MY UNIVERSITY
+            </button>
+          </>
+        )}
+      </div>
+
       {users.length === 0 ? (
         <div className="empty-message">No warriors yet</div>
       ) : (
@@ -612,12 +829,24 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
             <div className="college-filter">
-              <label>Institution:</label>
-              <select value={selectedCollege} onChange={(e) => setSelectedCollege(e.target.value)}>
-                <option value="">All</option>
-                {colleges.map(c => <option key={c} value={c}>{c}</option>)}
+              <label>Country:</label>
+              <select value={selectedCountry} onChange={(e) => {
+                setSelectedCountry(e.target.value);
+                setSelectedInstitution('all');
+              }}>
+                <option value="all">All</option>
+                {countries.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            {selectedCountry !== 'all' && (
+              <div className="college-filter">
+                <label>Institution:</label>
+                <select value={selectedInstitution} onChange={(e) => setSelectedInstitution(e.target.value)}>
+                  <option value="all">All</option>
+                  {institutions.map(inst => <option key={inst} value={inst}>{inst}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="podium">
@@ -647,7 +876,12 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
                   <div className="podium-avatar"><User size={32} strokeWidth={2} /></div>
                   <div className="podium-name">{user.username}</div>
                   <div className="podium-score">{user.score} pts</div>
-                  <div className="podium-college">{user.institutionName}</div>
+                  <div className="podium-college">
+                    {user.institutionName}
+                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                      {user.country}
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -656,7 +890,7 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
           {restUsers.length > 0 && (
             <div className="leaderboard-table">
               <div className="table-header">
-                <div>RANK</div><div>WARRIOR</div><div>INSTITUTION</div><div>PROBLEMS</div><div>SCORE</div><div>STREAK</div><div>LEVEL</div>
+                <div>RANK</div><div>WARRIOR</div><div>COUNTRY</div><div>INSTITUTION</div><div>PROBLEMS</div><div>SCORE</div><div>LEVEL</div>
               </div>
               {restUsers.map((user, index) => (
                 <div key={user._id} className="table-row">
@@ -665,10 +899,10 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
                     <span className="user-avatar-small"><User size={16} strokeWidth={2} /></span>
                     {user.username}
                   </div>
+                  <div className="table-cell">{user.country}</div>
                   <div className="table-cell">{user.institutionName}</div>
                   <div className="table-cell">{user.problems}</div>
                   <div className="table-cell">{user.score}</div>
-                  <div className="table-cell"><Flame size={16} strokeWidth={2} /> {user.streak}</div>
                   <div className="table-cell"><span className="level-badge">Lv.{user.level}</span></div>
                 </div>
               ))}
@@ -685,5 +919,4 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
 }
 
 export default App;
-// Trigger rebuild
-// Rebuild Mon Nov  3 08:55:24 EST 2025
+ENDOFFILE
