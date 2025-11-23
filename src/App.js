@@ -1,6 +1,3 @@
-cd ~/Desktop/leetcode-arena-game
-
-cat > src/App.js << 'ENDOFFILE'
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
@@ -919,4 +916,3 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
 }
 
 export default App;
-ENDOFFILE
