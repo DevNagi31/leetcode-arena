@@ -39,7 +39,7 @@ router.post('/verify-leetcode', leetcodeLimiter, leetcodeValidation, validate, a
 // Register
 router.post('/register', authLimiter, registerValidation, validate, async (req, res) => {
   try {
-    const { username, email, password, leetcodeUsername, leetcodeData, educationLevel, institutionName, year } = req.body;
+    const { username, email, password, country, leetcodeUsername, leetcodeData, educationLevel, institutionName, year } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -76,6 +76,8 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
       username,
       email,
       password: hashedPassword,
+    country,
+      country,
       leetcodeUsername,
       avatar,
       problems: leetcodeData.problems,
