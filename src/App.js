@@ -510,7 +510,6 @@ function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
 
-  // Auto-refresh stats on component mount
   useEffect(() => {
     const autoRefresh = async () => {
       try {
@@ -706,7 +705,7 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
   const [loading, setLoading] = useState(true);
   const [countries, setCountries] = useState([]);
   const [institutions, setInstitutions] = useState([]);
-  const [viewMode, setViewMode] = useState('global'); // 'global', 'country', 'institution'
+  const [viewMode, setViewMode] = useState('global');
 
   useEffect(() => {
     fetchLeaderboard();
