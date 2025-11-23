@@ -460,6 +460,9 @@ function EducationInfo({ onNavigate, setToken, setCurrentUser, setError, error, 
                     placeholder="Enter your institution name"
                     value={formData.institutionName} 
                     onChange={(e) => setFormData({...formData, institutionName: e.target.value})}
+                    list="universities"
+                    id="institution-search"
+                    name="institutionName"
                     required 
                   />
                   <button 
