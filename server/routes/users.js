@@ -188,3 +188,54 @@ router.put('/change-password', auth, async (req, res) => {
     res.status(500).json({ message: 'Failed to change password' });
   }
 });
+
+// Update LeetCode username
+router.put('/update-leetcode-username', auth, async (req, res) => {
+  try {
+    const { newUsername } = req.body;
+    const user = await User.findById(req.userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if username is already taken
+    const existing = await User.findOne({ leetcodeUsername: newUsername });
+    if (existing && existing._id.toString() !== user._id.toString()) {
+      return res.status(400).json({ message: 'LeetCode username already linked to another account' });
+    }
+
+    // Verify new username exists on LeetCode
+    const leetcodeData = await fetchLeetCodeStats(newUsername);
+
+    // Update username and stats
+    user.leetcodeUsername = newUsername;
+    user.problems = leetcodeData.problems;
+    user.easy = leetcodeData.easy;
+    user.medium = leetcodeData.medium;
+    user.hard = leetcodeData.hard;
+    user.score = (leetcodeData.easy * 10) + (leetcodeData.medium * 15) + (leetcodeData.hard * 20);
+    user.level = Math.floor(leetcodeData.problems / 10) + 1;
+    user.lastUpdated = new Date();
+
+    await user.save();
+
+    res.json({
+      message: 'LeetCode username updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        leetcodeUsername: user.leetcodeUsername,
+        problems: user.problems,
+        easy: user.easy,
+        medium: user.medium,
+        hard: user.hard,
+        score: user.score,
+        level: user.level
+      }
+    });
+  } catch (error) {
+    console.error('Error updating LeetCode username:', error);
+    res.status(500).json({ message: error.message || 'Failed to update username' });
+  }
+});

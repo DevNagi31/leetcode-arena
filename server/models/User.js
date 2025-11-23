@@ -50,6 +50,18 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  easy: {
+    type: Number,
+    default: 0,
+  },
+  medium: {
+    type: Number,
+    default: 0,
+  },
+  hard: {
+    type: Number,
+    default: 0,
+  },
   streak: {
     type: Number,
     default: 0,
@@ -62,6 +74,14 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: null,
   },
+  totalActiveDays: {
+    type: Number,
+    default: 0,
+  },
+  ranking: {
+    type: Number,
+    default: 0,
+  },
   lastActive: {
     type: Date,
     default: Date.now,
@@ -69,6 +89,10 @@ const UserSchema = new mongoose.Schema({
   lastSynced: {
     type: Date,
     default: null,
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now,
   },
   createdAt: {
     type: Date,
