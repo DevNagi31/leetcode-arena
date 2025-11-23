@@ -1102,3 +1102,14 @@ body {
 .scanlines {
   display: none;
 }
+
+.auth-choice-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-choice-grid .pixel-button {
+  padding: 20px 32px;
+  font-size: 15px;
+} 

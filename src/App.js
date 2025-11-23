@@ -17,7 +17,8 @@ import {
   Award,
   User,
   Medal,
-  TrendingUp
+  TrendingUp,
+  UserPlus
 } from 'lucide-react';
 import Toast from './components/Toast';
 import Login from './components/Login';
@@ -104,6 +105,7 @@ function App() {
       </div>
       
       {view === 'landing' && <LandingPage onNavigate={changeView} />}
+      {view === 'auth-choice' && <AuthChoice onNavigate={changeView} />}
       {view === 'login' && <Login onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} showToast={showToast} />}
       {view === 'leetcode-connect' && <LeetCodeConnect onNavigate={changeView} setToken={setToken} setError={setError} error={error} showToast={showToast} />}
       {view === 'education-info' && <EducationInfo onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
@@ -142,18 +144,34 @@ function LandingPage({ onNavigate }) {
       <div className="game-tagline">COMPETE • LEVEL UP • DOMINATE</div>
       
       <div className="menu-options">
-        <button className="pixel-button primary" onClick={() => onNavigate('leetcode-connect')}>
+        <button className="pixel-button primary" onClick={() => onNavigate('auth-choice')}>
           <Zap size={18} strokeWidth={2.5} /> START QUEST
-        </button>
-        <button className="pixel-button" onClick={() => onNavigate('login')}>
-          <Lock size={18} strokeWidth={2.5} /> LOGIN
         </button>
         <button className="pixel-button secondary" onClick={() => onNavigate('leaderboard')}>
           <Trophy size={18} strokeWidth={2.5} /> LEADERBOARD
         </button>
       </div>
+    </div>
+  );
+}
+
+function AuthChoice({ onNavigate }) {
+  return (
+    <div className="form-container">
+      <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
+      <h2 className="form-title">JOIN THE ARENA</h2>
+      <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>
+        Track yourself among your peers and compete on the leaderboard
+      </p>
       
-      <p className="game-info">COMPETE • LEVEL UP • DOMINATE</p>
+      <div className="auth-choice-grid">
+        <button className="pixel-button primary full-width" onClick={() => onNavigate('leetcode-connect')}>
+          <UserPlus size={18} strokeWidth={2.5} /> SIGN UP
+        </button>
+        <button className="pixel-button full-width" onClick={() => onNavigate('login')}>
+          <Lock size={18} strokeWidth={2.5} /> LOGIN
+        </button>
+      </div>
     </div>
   );
 }
@@ -197,7 +215,7 @@ function LeetCodeConnect({ onNavigate, setToken, setError, error, showToast }) {
 
   return (
     <div className="form-container">
-      <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
+      <button className="back-button" onClick={() => onNavigate('auth-choice')}>← BACK</button>
       <h2 className="form-title">CONNECT LEETCODE</h2>
       {error && <div className="error-message">{error}</div>}
       <form className="pixel-form" onSubmit={handleConnect}>
@@ -381,6 +399,23 @@ function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
   const [refreshing, setRefreshing] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+
+  // Auto-refresh stats on component mount
+  useEffect(() => {
+    const autoRefresh = async () => {
+      try {
+        const response = await axios.post(`${API_URL}/users/refresh-stats`, {}, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        setUser(response.data.user);
+        console.log('Stats auto-refreshed on dashboard load');
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+      }
+    };
+    
+    autoRefresh();
+  }, []); // Run once on mount
 
   if (!user) return <LoadingScreen />;
 
@@ -685,5 +720,3 @@ function Leaderboard({ users, setUsers, onNavigate, currentUser, showToast }) {
 }
 
 export default App;
-// Trigger rebuild
-// Rebuild Mon Nov  3 08:55:24 EST 2025
