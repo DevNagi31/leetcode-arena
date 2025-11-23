@@ -22,6 +22,10 @@ const UserSchema = new mongoose.Schema({
     required: true,
     enum: ['High School', 'Undergraduate', 'Graduate', 'PhD', 'Bootcamp', 'Self-Taught', 'Other']
   },
+  country: {
+    type: String,
+    required: true,
+  },
   institutionName: {
     type: String,
     required: true,
