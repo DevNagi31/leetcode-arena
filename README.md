@@ -1,70 +1,105 @@
-# Getting Started with Create React App
+# Code Manager
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A developer growth platform that connects to your LeetCode account to track progress, visualize activity, and compete with peers at your university or country.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **LeetCode Integration** - Syncs your solved problems, difficulty breakdown, and rankings directly from LeetCode
+- **Activity Tracker** - Heatmap calendar, streak tracking, and weekly goal setting
+- **My Solutions** - Save code snippets and notes for problems with LeetCode problem fetching
+- **Leaderboard** - Global, country, and university-level rankings
+- **Friends & Chat** - Add friends, view their profiles/stats, and message them in real-time
+- **Profile Management** - Edit education info, change password, customize weekly goals
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Frontend:** React, Axios, Lucide Icons, Socket.io Client
+- **Backend:** Express, MongoDB/Mongoose, JWT Auth, Socket.io
+- **Security:** Helmet, Rate Limiting, Input Validation (express-validator)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v16+)
+- MongoDB (local or Atlas)
 
-### `npm run build`
+### Setup
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone the repo
+   ```bash
+   git clone https://github.com/DevNagi31/leetcode-arena.git
+   cd leetcode-arena
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies
+   ```bash
+   npm install
+   cd server && npm install && cd ..
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Create environment files
 
-### `npm run eject`
+   **`server/.env`**
+   ```
+   MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+   **`.env.production`** (for production builds)
+   ```
+   REACT_APP_API_URL=your_production_api_url
+   ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+4. Run in development
+   ```bash
+   npm run dev
+   ```
+   This starts both the React frontend (port 3000) and Express backend (port 5001) concurrently.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Scripts
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start React dev server |
+| `npm run server` | Start backend server |
+| `npm run dev` | Start both frontend and backend |
+| `npm run build` | Build for production |
 
-## Learn More
+## Project Structure
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```
+├── public/                 # Static assets
+├── server/
+│   ├── data/               # Static data (countries.json)
+│   ├── middleware/          # Auth, security, validation
+│   ├── models/             # Mongoose schemas
+│   ├── routes/             # API route handlers
+│   ├── services/           # LeetCode & university APIs
+│   └── server.js           # Express + Socket.io entry point
+├── src/
+│   ├── components/         # React components
+│   ├── styles/             # CSS
+│   └── App.js              # Main app with all views
+└── package.json
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## API Routes
 
-### Code Splitting
+| Route | Description |
+|-------|-------------|
+| `POST /api/auth/verify-leetcode` | Verify LeetCode username |
+| `POST /api/auth/register` | Register new user |
+| `POST /api/auth/login` | Login |
+| `GET /api/users/me` | Get current user |
+| `POST /api/users/refresh-stats` | Sync LeetCode stats |
+| `GET /api/leaderboard` | Get leaderboard (filterable) |
+| `GET /api/friends` | Friends list |
+| `GET/POST /api/snippets` | Code snippets CRUD |
+| `GET/POST /api/notes` | Notes CRUD |
+| `GET/POST /api/messages` | Chat messages |
+| `POST /api/leetcode/problem` | Fetch problem details |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## License
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+ISC
