@@ -42,7 +42,14 @@ router.put('/:id', auth, async (req, res) => {
     const note = await Note.findOne({ _id: req.params.id, userId: req.userId });
     if (!note) return res.status(404).json({ message: 'Note not found' });
 
-    Object.assign(note, req.body, { updatedAt: Date.now() });
+    const { problemName, difficulty, content, resources, personalRating, topics } = req.body;
+    if (problemName !== undefined) note.problemName = problemName;
+    if (difficulty !== undefined) note.difficulty = difficulty;
+    if (content !== undefined) note.content = content;
+    if (resources !== undefined) note.resources = resources;
+    if (personalRating !== undefined) note.personalRating = personalRating;
+    if (topics !== undefined) note.topics = topics;
+    note.updatedAt = Date.now();
     await note.save();
     res.json(note);
   } catch (error) {

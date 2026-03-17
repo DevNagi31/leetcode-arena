@@ -136,6 +136,10 @@ router.post('/decline/:requestId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Request not found' });
     }
 
+    if (request.to.toString() !== req.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
     request.status = 'declined';
     await request.save();
 
@@ -166,8 +170,9 @@ router.delete('/:friendId', auth, async (req, res) => {
 // @desc Search users by username
 router.get('/search/:username', auth, async (req, res) => {
   try {
+    const escaped = req.params.username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const users = await User.find({
-      username: { $regex: req.params.username, $options: 'i' },
+      username: { $regex: escaped, $options: 'i' },
       _id: { $ne: req.userId }
     }).select('username leetcodeUsername problems easy medium hard score country institutionName currentStreak').limit(10);
 

@@ -29,8 +29,8 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
 
   return (
     <div className="form-container">
-      <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
-      <h2 className="form-title">PLAYER LOGIN</h2>
+      <button className="back-button" onClick={() => onNavigate('auth-choice')}>← BACK</button>
+      <h2 className="form-title">LOGIN</h2>
       
       <form className="pixel-form" onSubmit={handleSubmit}>
         <div className="form-group">

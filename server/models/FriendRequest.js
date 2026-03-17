@@ -22,4 +22,7 @@ const FriendRequestSchema = new mongoose.Schema({
   }
 });
 
+FriendRequestSchema.index({ to: 1, status: 1 });
+FriendRequestSchema.index({ from: 1, status: 1 });
+
 module.exports = mongoose.model('FriendRequest', FriendRequestSchema);

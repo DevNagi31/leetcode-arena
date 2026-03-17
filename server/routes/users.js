@@ -26,7 +26,7 @@ const calculateStreaks = (activityDates) => {
     const curr = new Date(sortedDates[i]);
     const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
 
-    if (diffDays === 1) {
+    if (Math.round(diffDays) === 1) {
       tempStreak++;
     } else {
       longestStreak = Math.max(longestStreak, tempStreak);
@@ -45,7 +45,7 @@ const calculateStreaks = (activityDates) => {
     for (let i = sortedDates.length - 2; i >= 0; i--) {
       const curr = new Date(sortedDates[i + 1]);
       const prev = new Date(sortedDates[i]);
-      const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+      const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
       if (diffDays === 1) {
         currentStreak++;
       } else {
@@ -147,7 +147,6 @@ router.post('/refresh-stats', auth, async (req, res) => {
     const { currentStreak, longestStreak } = calculateStreaks(user.activityDates);
     user.currentStreak = currentStreak;
     user.longestStreak = longestStreak;
-    user.streak = currentStreak;
 
     // Calculate weekly progress
     const weeklyProgress = calculateWeeklyProgress(user.activityDates);
@@ -182,7 +181,6 @@ router.post('/refresh-stats', auth, async (req, res) => {
         medium: user.medium,
         hard: user.hard,
         score: user.score,
-        streak: user.streak,
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
         totalActiveDays: user.totalActiveDays,
@@ -220,7 +218,9 @@ router.put('/profile', auth, async (req, res) => {
     const usersAbove = await User.countDocuments({ score: { $gt: user.score } });
     const rank = usersAbove + 1;
 
-    res.json({ message: 'Profile updated successfully', user: { ...user.toObject(), rank } });
+    const userObj = user.toObject();
+    delete userObj.password;
+    res.json({ message: 'Profile updated successfully', user: { ...userObj, rank } });
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ message: 'Failed to update profile' });
@@ -231,6 +231,11 @@ router.put('/profile', auth, async (req, res) => {
 router.put('/change-password', auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+
     const user = await User.findById(req.userId);
 
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -253,6 +258,11 @@ router.put('/change-password', auth, async (req, res) => {
 router.put('/weekly-goal', auth, async (req, res) => {
   try {
     const { target } = req.body;
+
+    if (!target || typeof target !== 'number' || target < 1 || target > 50) {
+      return res.status(400).json({ message: 'Weekly goal must be between 1 and 50' });
+    }
+
     const user = await User.findById(req.userId);
 
     if (!user) return res.status(404).json({ message: 'User not found' });

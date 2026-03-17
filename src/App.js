@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
+import DOMPurify from 'dompurify';
 import {
   Trophy, Zap, Home, LogOut, Search, RefreshCw, Edit, Lock,
   BarChart3, User, Globe, Building2, Code, Users,
@@ -1689,7 +1690,7 @@ function MySolutionsTab({ showToast }) {
                     {problemData.topicTags.map(t => <span key={t.name} className="topic-tag">{t.name}</span>)}
                   </div>
                   <div style={{ maxHeight: '400px', overflow: 'auto', fontSize: '13px', lineHeight: '1.6' }}
-                    dangerouslySetInnerHTML={{ __html: problemData.content }} />
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problemData.content) }} />
                 </div>
 
                 <div>
@@ -1773,7 +1774,7 @@ function MySolutionsTab({ showToast }) {
                       ))}
                     </div>
                     <div style={{ maxHeight: '500px', overflow: 'auto', fontSize: '13px', lineHeight: '1.6' }}
-                      dangerouslySetInnerHTML={{ __html: viewingSolution.problemDetails.content }} />
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content) }} />
                   </>
                 ) : (
                   <p style={{ color: 'var(--text-tertiary)' }}>Problem description not available</p>

@@ -44,7 +44,16 @@ router.put('/:id', auth, async (req, res) => {
     const snippet = await Snippet.findOne({ _id: req.params.id, userId: req.userId });
     if (!snippet) return res.status(404).json({ message: 'Snippet not found' });
 
-    Object.assign(snippet, req.body, { updatedAt: Date.now() });
+    const { problemName, difficulty, language, code, runtime, memory, topics, link } = req.body;
+    if (problemName !== undefined) snippet.problemName = problemName;
+    if (difficulty !== undefined) snippet.difficulty = difficulty;
+    if (language !== undefined) snippet.language = language;
+    if (code !== undefined) snippet.code = code;
+    if (runtime !== undefined) snippet.runtime = runtime;
+    if (memory !== undefined) snippet.memory = memory;
+    if (topics !== undefined) snippet.topics = topics;
+    if (link !== undefined) snippet.link = link;
+    snippet.updatedAt = Date.now();
     await snippet.save();
     res.json(snippet);
   } catch (error) {

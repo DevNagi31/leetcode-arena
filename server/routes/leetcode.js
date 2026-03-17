@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const auth = require('../middleware/auth');
 
 // @route POST /api/leetcode/problem
 // @desc Fetch problem details from LeetCode
-router.post('/problem', async (req, res) => {
+router.post('/problem', auth, async (req, res) => {
   try {
     let { titleSlug } = req.body;
 

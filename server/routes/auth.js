@@ -63,13 +63,8 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Calculate score and level
+    // Calculate score
     const score = (leetcodeData.easy * 10) + (leetcodeData.medium * 15) + (leetcodeData.hard * 20);
-    const level = Math.floor(leetcodeData.problems / 10) + 1;
-
-    // Random avatar
-    const avatars = ['🎮', '⚔️', '🛡️', '🏹', '🔮', '⚡', '🔥', '💎', '👑', '🎯'];
-    const avatar = avatars[Math.floor(Math.random() * avatars.length)];
 
     // Create user
     const user = new User({
@@ -78,14 +73,11 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
       password: hashedPassword,
       country,
       leetcodeUsername,
-      avatar,
       problems: leetcodeData.problems,
       easy: leetcodeData.easy,
       medium: leetcodeData.medium,
       hard: leetcodeData.hard,
       score,
-      level,
-      streak: leetcodeData.streak,
       totalActiveDays: leetcodeData.totalActiveDays,
       ranking: leetcodeData.ranking,
       educationLevel,
@@ -109,15 +101,12 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
         id: user._id,
         username: user.username,
         email: user.email,
-        avatar: user.avatar,
         leetcodeUsername: user.leetcodeUsername,
         problems: user.problems,
         score: user.score,
-        level: user.level,
-        streak: user.streak,
-        rank: null,
         educationLevel: user.educationLevel,
         institutionName: user.institutionName,
+        country: user.country,
         year: user.year
       }
     });
@@ -157,14 +146,12 @@ router.post('/login', authLimiter, loginValidation, validate, async (req, res) =
         id: user._id,
         username: user.username,
         email: user.email,
-        avatar: user.avatar,
         leetcodeUsername: user.leetcodeUsername,
         problems: user.problems,
         score: user.score,
-        level: user.level,
-        streak: user.streak,
         educationLevel: user.educationLevel,
         institutionName: user.institutionName,
+        country: user.country,
         year: user.year
       }
     });
