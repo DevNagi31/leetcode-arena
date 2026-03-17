@@ -2,6 +2,33 @@
 
 A developer growth platform that connects to your LeetCode account to track progress, visualize activity, and compete with peers at your university or country.
 
+## Screenshots
+
+### Dashboard Overview
+Track your total problems solved, difficulty breakdown, and estimated topic coverage.
+
+![Dashboard Overview](screenshots/dashboard-overview.png)
+
+### Activity Tracker
+Visualize your coding consistency with a heatmap calendar, streak tracking, and weekly goals.
+
+![Activity Tracker](screenshots/tracker.png)
+
+### My Solutions
+Save code snippets and notes for problems. View the problem description side-by-side with your solution.
+
+![My Solutions](screenshots/my-solutions.png)
+
+### Leaderboard
+Compete globally or filter by country and university. Top 3 shown on a podium.
+
+![Leaderboard](screenshots/leaderboard.png)
+
+### Friends & Chat
+Add friends, view their stats, and message them in real-time.
+
+![Chat](screenshots/chat.png)
+
 ## Features
 
 - **LeetCode Integration** - Syncs your solved problems, difficulty breakdown, and rankings directly from LeetCode
