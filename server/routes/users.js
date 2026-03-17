@@ -2,128 +2,165 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const bcrypt = require('bcryptjs');
 const { fetchLeetCodeStats } = require('../services/leetcode');
 
+// Helper: Calculate streaks
+const calculateStreaks = (activityDates) => {
+  if (!activityDates || activityDates.length === 0) {
+    return { currentStreak: 0, longestStreak: 0 };
+  }
+
+  // Sort dates ascending
+  const sortedDates = activityDates
+    .map(a => a.date)
+    .sort((a, b) => new Date(a) - new Date(b));
+
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let tempStreak = 1;
+
+  // Calculate longest streak
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prev = new Date(sortedDates[i - 1]);
+    const curr = new Date(sortedDates[i]);
+    const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+
+    if (diffDays === 1) {
+      tempStreak++;
+    } else {
+      longestStreak = Math.max(longestStreak, tempStreak);
+      tempStreak = 1;
+    }
+  }
+  longestStreak = Math.max(longestStreak, tempStreak);
+
+  // Calculate current streak (from today backwards)
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const lastDate = sortedDates[sortedDates.length - 1];
+
+  if (lastDate === today || lastDate === yesterday) {
+    currentStreak = 1;
+    for (let i = sortedDates.length - 2; i >= 0; i--) {
+      const curr = new Date(sortedDates[i + 1]);
+      const prev = new Date(sortedDates[i]);
+      const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+      if (diffDays === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { currentStreak, longestStreak };
+};
+
+// Helper: Update activity for today
+const updateActivityDate = (activityDates, newProblems, prevProblems, easy, medium, hard) => {
+  const today = new Date().toISOString().split('T')[0];
+  const existing = activityDates.find(a => a.date === today);
+  const diff = Math.max(0, newProblems - prevProblems);
+
+  if (existing) {
+    existing.problemsSolved += diff;
+    existing.easy = easy;
+    existing.medium = medium;
+    existing.hard = hard;
+  } else if (diff > 0 || newProblems > 0) {
+    activityDates.push({
+      date: today,
+      problemsSolved: diff > 0 ? diff : 1,
+      easy,
+      medium,
+      hard
+    });
+  }
+
+  return activityDates;
+};
+
+// Helper: Calculate weekly progress
+const calculateWeeklyProgress = (activityDates) => {
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const weeklyProblems = activityDates
+    .filter(a => new Date(a.date) >= startOfWeek)
+    .reduce((sum, a) => sum + a.problemsSolved, 0);
+
+  return weeklyProblems;
+};
+
 // @route   GET /api/users/me
-// @desc    Get current user profile
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
-    res.json(user);
+
+    // Calculate rank
+    const usersAbove = await User.countDocuments({ score: { $gt: user.score } });
+    const rank = usersAbove + 1;
+
+    res.json({ ...user.toObject(), rank });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// @route   POST /api/users/sync-leetcode
-// @desc    Sync LeetCode stats
-router.post('/sync-leetcode', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.userId);
-    
-    if (!user.leetcodeUsername) {
-      return res.status(400).json({ message: 'No LeetCode username linked' });
-    }
-
-    console.log('Syncing stats for:', user.leetcodeUsername);
-
-    // Fetch latest stats from LeetCode
-    const leetcodeStats = await fetchLeetCodeStats(user.leetcodeUsername);
-    
-    // Update user stats
-    user.problems = leetcodeStats.problems;
-    user.streak = leetcodeStats.streak;
-    user.level = Math.floor((leetcodeStats.problems * 10) / 100) + 1;
-    user.score = (user.problems * 10) + (user.streak * 5) + (user.level * 20);
-    user.lastSynced = new Date();
-    user.leetcodeVerified = true;
-    
-    await user.save();
-    
-    res.json({
-      message: 'Stats synced successfully!',
-      user: user
-    });
-  } catch (error) {
-    console.error('Sync error:', error);
-    res.status(500).json({ message: 'Failed to sync with LeetCode' });
-  }
-});
-
-module.exports = router;
-
-// Refresh user stats from LeetCode
+// @route   POST /api/users/refresh-stats
 router.post('/refresh-stats', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Fetch fresh LeetCode data
-    const { fetchLeetCodeStats } = require('../services/leetcode');
     const leetcodeData = await fetchLeetCodeStats(user.leetcodeUsername);
 
-    // Update user stats
+    // Store previous problems count
+    const prevProblems = user.problems || 0;
+
+    // Update basic stats
     user.problems = leetcodeData.problems;
     user.easy = leetcodeData.easy;
     user.medium = leetcodeData.medium;
     user.hard = leetcodeData.hard;
-    user.streak = leetcodeData.streak;
     user.totalActiveDays = leetcodeData.totalActiveDays;
     user.ranking = leetcodeData.ranking;
-    
-    // Recalculate score and level
+
+    // Update activity dates
+    user.activityDates = updateActivityDate(
+      user.activityDates || [],
+      leetcodeData.problems,
+      prevProblems,
+      leetcodeData.easy,
+      leetcodeData.medium,
+      leetcodeData.hard
+    );
+
+    // Calculate streaks
+    const { currentStreak, longestStreak } = calculateStreaks(user.activityDates);
+    user.currentStreak = currentStreak;
+    user.longestStreak = longestStreak;
+    user.streak = currentStreak;
+
+    // Calculate weekly progress
+    const weeklyProgress = calculateWeeklyProgress(user.activityDates);
+    user.weeklyGoal = {
+      target: user.weeklyGoal?.target || 5,
+      current: weeklyProgress,
+      weekStart: new Date()
+    };
+
+    // Recalculate score
     user.score = (leetcodeData.easy * 10) + (leetcodeData.medium * 15) + (leetcodeData.hard * 20);
-    user.level = Math.floor(leetcodeData.problems / 10) + 1;
     user.lastUpdated = new Date();
-
-    await user.save();
-
-    res.json({
-      message: 'Stats refreshed successfully',
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        leetcodeUsername: user.leetcodeUsername,
-        problems: user.problems,
-        easy: user.easy,
-        medium: user.medium,
-        hard: user.hard,
-        score: user.score,
-        level: user.level,
-        streak: user.streak,
-        totalActiveDays: user.totalActiveDays,
-        ranking: user.ranking,
-        educationLevel: user.educationLevel,
-        institutionName: user.institutionName,
-        year: user.year,
-        lastUpdated: user.lastUpdated
-      }
-    });
-  } catch (error) {
-    console.error('Error refreshing stats:', error);
-    res.status(500).json({ message: 'Failed to refresh stats' });
-  }
-});
-
-// Update user profile
-router.put('/profile', auth, async (req, res) => {
-  try {
-    const { institutionName, year, educationLevel } = req.body;
-    const user = await User.findById(req.userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Update fields
-    if (institutionName) user.institutionName = institutionName;
-    if (year) user.year = year;
-    if (educationLevel) user.educationLevel = educationLevel;
+    user.lastActive = new Date();
 
     await user.save();
 
@@ -132,52 +169,75 @@ router.put('/profile', auth, async (req, res) => {
     const rank = usersAbove + 1;
 
     res.json({
-      message: 'Profile updated successfully',
+      message: 'Stats refreshed successfully',
       user: {
         id: user._id,
         username: user.username,
         email: user.email,
         avatar: user.avatar,
+        country: user.country,
         leetcodeUsername: user.leetcodeUsername,
         problems: user.problems,
         easy: user.easy,
         medium: user.medium,
         hard: user.hard,
         score: user.score,
-        level: user.level,
         streak: user.streak,
+        currentStreak: user.currentStreak,
+        longestStreak: user.longestStreak,
         totalActiveDays: user.totalActiveDays,
         ranking: user.ranking,
         rank: rank,
         educationLevel: user.educationLevel,
         institutionName: user.institutionName,
         year: user.year,
-        lastUpdated: user.lastUpdated
+        lastUpdated: user.lastUpdated,
+        activityDates: user.activityDates,
+        weeklyGoal: user.weeklyGoal,
+        emailReminders: user.emailReminders
       }
     });
+  } catch (error) {
+    console.error('Error refreshing stats:', error);
+    res.status(500).json({ message: 'Failed to refresh stats' });
+  }
+});
+
+// @route   PUT /api/users/profile
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { institutionName, year, educationLevel } = req.body;
+    const user = await User.findById(req.userId);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (institutionName) user.institutionName = institutionName;
+    if (year) user.year = year;
+    if (educationLevel) user.educationLevel = educationLevel;
+
+    await user.save();
+
+    const usersAbove = await User.countDocuments({ score: { $gt: user.score } });
+    const rank = usersAbove + 1;
+
+    res.json({ message: 'Profile updated successfully', user: { ...user.toObject(), rank } });
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ message: 'Failed to update profile' });
   }
 });
 
-// Change password
+// @route   PUT /api/users/change-password
 router.put('/change-password', auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const user = await User.findById(req.userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
 
-    // Verify current password
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
-    }
+    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
 
-    // Hash new password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
@@ -189,53 +249,38 @@ router.put('/change-password', auth, async (req, res) => {
   }
 });
 
-// Update LeetCode username
-router.put('/update-leetcode-username', auth, async (req, res) => {
+// @route   PUT /api/users/weekly-goal
+router.put('/weekly-goal', auth, async (req, res) => {
   try {
-    const { newUsername } = req.body;
+    const { target } = req.body;
     const user = await User.findById(req.userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
 
-    // Check if username is already taken
-    const existing = await User.findOne({ leetcodeUsername: newUsername });
-    if (existing && existing._id.toString() !== user._id.toString()) {
-      return res.status(400).json({ message: 'LeetCode username already linked to another account' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Verify new username exists on LeetCode
-    const leetcodeData = await fetchLeetCodeStats(newUsername);
-
-    // Update username and stats
-    user.leetcodeUsername = newUsername;
-    user.problems = leetcodeData.problems;
-    user.easy = leetcodeData.easy;
-    user.medium = leetcodeData.medium;
-    user.hard = leetcodeData.hard;
-    user.score = (leetcodeData.easy * 10) + (leetcodeData.medium * 15) + (leetcodeData.hard * 20);
-    user.level = Math.floor(leetcodeData.problems / 10) + 1;
-    user.lastUpdated = new Date();
-
+    user.weeklyGoal.target = target;
     await user.save();
 
-    res.json({
-      message: 'LeetCode username updated successfully',
-      user: {
-        id: user._id,
-        username: user.username,
-        leetcodeUsername: user.leetcodeUsername,
-        problems: user.problems,
-        easy: user.easy,
-        medium: user.medium,
-        hard: user.hard,
-        score: user.score,
-        level: user.level
-      }
-    });
+    res.json({ message: 'Weekly goal updated', weeklyGoal: user.weeklyGoal });
   } catch (error) {
-    console.error('Error updating LeetCode username:', error);
-    res.status(500).json({ message: error.message || 'Failed to update username' });
+    res.status(500).json({ message: 'Failed to update weekly goal' });
   }
 });
+
+// @route   PUT /api/users/email-reminders
+router.put('/email-reminders', auth, async (req, res) => {
+  try {
+    const { enabled, time, timezone } = req.body;
+    const user = await User.findById(req.userId);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.emailReminders = { enabled, time, timezone };
+    await user.save();
+
+    res.json({ message: 'Email reminders updated', emailReminders: user.emailReminders });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update email reminders' });
+  }
+});
+
+module.exports = router;

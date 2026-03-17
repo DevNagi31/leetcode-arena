@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = 'https://leetcode-arena-production.up.railway.app';
+const API_URL = '';
 
 const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });

@@ -1,0 +1,67 @@
+const express = require('express');
+const router = express.Router();
+const Snippet = require('../models/Snippet');
+const auth = require('../middleware/auth');
+
+// @route GET /api/snippets
+// @desc Get all snippets for current user
+router.get('/', auth, async (req, res) => {
+  try {
+    const snippets = await Snippet.find({ userId: req.userId }).sort({ createdAt: -1 });
+    res.json(snippets);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route POST /api/snippets
+// @desc Create new snippet
+router.post('/', auth, async (req, res) => {
+  try {
+    const { problemName, difficulty, language, code, runtime, memory, topics, link } = req.body;
+    const snippet = new Snippet({
+      userId: req.userId,
+      problemName,
+      difficulty,
+      language,
+      code,
+      runtime,
+      memory,
+      topics,
+      link
+    });
+    await snippet.save();
+    res.json(snippet);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route PUT /api/snippets/:id
+// @desc Update snippet
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const snippet = await Snippet.findOne({ _id: req.params.id, userId: req.userId });
+    if (!snippet) return res.status(404).json({ message: 'Snippet not found' });
+
+    Object.assign(snippet, req.body, { updatedAt: Date.now() });
+    await snippet.save();
+    res.json(snippet);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route DELETE /api/snippets/:id
+// @desc Delete snippet
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const result = await Snippet.deleteOne({ _id: req.params.id, userId: req.userId });
+    if (result.deletedCount === 0) return res.status(404).json({ message: 'Snippet not found' });
+    res.json({ message: 'Snippet deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+module.exports = router;
