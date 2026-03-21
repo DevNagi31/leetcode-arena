@@ -39,32 +39,35 @@ router.post('/verify-leetcode', leetcodeLimiter, leetcodeValidation, validate, a
 // Register
 router.post('/register', authLimiter, registerValidation, validate, async (req, res) => {
   try {
-    const { username, email, password, country, leetcodeUsername, leetcodeData, educationLevel, institutionName, year } = req.body;
+    const { username, email, password, country, leetcodeUsername, educationLevel, institutionName, year } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
-      return res.status(400).json({ 
-        message: existingUser.email === email 
-          ? 'Email already registered. Please login instead.' 
-          : 'Username already taken. Please choose another.' 
+      return res.status(400).json({
+        message: existingUser.email === email
+          ? 'Email already registered. Please login instead.'
+          : 'Username already taken. Please choose another.'
       });
     }
 
     // Double-check LeetCode username (security)
     const existingLeetCode = await User.findOne({ leetcodeUsername });
     if (existingLeetCode) {
-      return res.status(400).json({ 
-        message: 'This LeetCode account is already linked to another user. Please login instead.' 
+      return res.status(400).json({
+        message: 'This LeetCode account is already linked to another user. Please login instead.'
       });
     }
+
+    // Re-fetch LeetCode stats server-side (don't trust client data)
+    const verifiedStats = await fetchLeetCodeStats(leetcodeUsername);
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Calculate score
-    const score = (leetcodeData.easy * 10) + (leetcodeData.medium * 15) + (leetcodeData.hard * 20);
+    // Calculate score from verified stats
+    const score = (verifiedStats.easy * 10) + (verifiedStats.medium * 15) + (verifiedStats.hard * 20);
 
     // Create user
     const user = new User({
@@ -73,13 +76,13 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
       password: hashedPassword,
       country,
       leetcodeUsername,
-      problems: leetcodeData.problems,
-      easy: leetcodeData.easy,
-      medium: leetcodeData.medium,
-      hard: leetcodeData.hard,
+      problems: verifiedStats.problems,
+      easy: verifiedStats.easy,
+      medium: verifiedStats.medium,
+      hard: verifiedStats.hard,
       score,
-      totalActiveDays: leetcodeData.totalActiveDays,
-      ranking: leetcodeData.ranking,
+      totalActiveDays: verifiedStats.totalActiveDays,
+      ranking: verifiedStats.ranking,
       educationLevel,
       institutionName,
       year,

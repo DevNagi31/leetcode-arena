@@ -1267,10 +1267,11 @@ function ChatModal({ friend, currentUser, onClose, showToast }) {
     // Poll for new messages every 3 seconds
     const pollInterval = setInterval(fetchMessages, 3000);
 
-    // Socket.io for real-time (optional enhancement)
-    const newSocket = io('http://localhost:5001');
+    // Socket.io with JWT auth
+    const newSocket = io(window.location.origin, {
+      auth: { token }
+    });
     setSocket(newSocket);
-    newSocket.emit('user_online', currentUser._id || currentUser.id);
 
     newSocket.on('receive_message', (message) => {
       if (message.from === friend._id) {
@@ -1295,7 +1296,7 @@ function ChatModal({ friend, currentUser, onClose, showToast }) {
       clearInterval(pollInterval);
       newSocket.disconnect();
     };
-  }, [friend._id, currentUser._id || currentUser.id, token]);
+  }, [friend._id, token]);
 
   useEffect(() => {
     scrollToBottom();
@@ -1321,7 +1322,6 @@ function ChatModal({ friend, currentUser, onClose, showToast }) {
       // Also emit via socket for real-time
       if (socket) {
         socket.emit('send_message', {
-          from: currentUser._id || currentUser.id,
           to: friend._id,
           content: newMessage.trim()
         });
@@ -1345,10 +1345,10 @@ function ChatModal({ friend, currentUser, onClose, showToast }) {
 
   const handleTyping = () => {
     if (!socket) return;
-    socket.emit('typing', { from: currentUser._id || currentUser.id, to: friend._id });
+    socket.emit('typing', { to: friend._id });
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('stop_typing', { from: currentUser._id || currentUser.id, to: friend._id });
+      socket.emit('stop_typing', { to: friend._id });
     }, 2000);
   };
 
@@ -1479,7 +1479,7 @@ function MySolutionsTab({ showToast }) {
     setFetchingProblem(true);
     try {
       const titleSlug = extractTitleSlug(problemInput);
-      const response = await axios.post('/api/leetcode/problem', { titleSlug });
+      const response = await axios.post('/api/leetcode/problem', { titleSlug }, { headers });
       setProblemData(response.data);
       showToast('Problem loaded!', 'success');
     } catch (error) {
@@ -1551,7 +1551,7 @@ function MySolutionsTab({ showToast }) {
   const handleView = async (solution) => {
     try {
       const titleSlug = extractTitleSlug(solution.problemName);
-      const response = await axios.post('/api/leetcode/problem', { titleSlug });
+      const response = await axios.post('/api/leetcode/problem', { titleSlug }, { headers });
       setViewingSolution({ ...solution, problemDetails: response.data });
       setShowViewModal(true);
     } catch (error) {
@@ -1565,7 +1565,7 @@ function MySolutionsTab({ showToast }) {
       const titleSlug = solution.snippet?.link ? 
         extractTitleSlug(solution.snippet.link) : 
         extractTitleSlug(solution.problemName);
-      const response = await axios.post('/api/leetcode/problem', { titleSlug });
+      const response = await axios.post('/api/leetcode/problem', { titleSlug }, { headers });
       setProblemData(response.data);
     } catch (error) {
       showToast('Could not load problem details', 'error');

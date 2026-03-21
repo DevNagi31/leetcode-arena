@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // Hipo University API - 23,000+ universities worldwide
-const UNIVERSITY_API = 'http://universities.hipolabs.com/search';
+const UNIVERSITY_API = 'https://universities.hipolabs.com/search';
 
 /**
  * Search universities by name and country
