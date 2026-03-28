@@ -1124,39 +1124,6 @@ body {
   gap: 8px;
 }
 
-/* Difficulty Bars */
-.difficulty-bars { display: flex; flex-direction: column; gap: 12px; }
-
-.difficulty-bar-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 40px;
-  align-items: center;
-  gap: 12px;
-}
-
-.difficulty-label { font-size: 13px; font-weight: 600; }
-
-.difficulty-bar-track {
-  height: 8px;
-  background: var(--bg-primary);
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.difficulty-bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.5s ease;
-}
-
-.difficulty-count {
-  font-size: 13px;
-  font-weight: 700;
-  text-align: right;
-  color: var(--text-secondary);
-}
-
 /* Rankings Grid */
 .rankings-grid {
   display: grid;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 export default function LandingPage({ onNavigate }) {
   return (
@@ -13,9 +13,6 @@ export default function LandingPage({ onNavigate }) {
       <div className="menu-options">
         <button className="pixel-button primary" onClick={() => onNavigate('auth-choice')}>
           <Zap size={16} /> GET STARTED
-        </button>
-        <button className="pixel-button secondary" onClick={() => onNavigate('leaderboard')}>
-          <Trophy size={16} /> LEADERBOARD
         </button>
       </div>
     </div>

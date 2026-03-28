@@ -8,7 +8,6 @@ import AuthChoice from './components/AuthChoice';
 import LeetCodeConnect from './components/LeetCodeConnect';
 import EducationInfo from './components/EducationInfo';
 import Dashboard from './components/Dashboard';
-import Leaderboard from './components/Leaderboard';
 import ForgotPassword from './components/ForgotPassword';
 import NotFound from './components/NotFound';
 import PageTransition from './components/PageTransition';
@@ -27,7 +26,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [transitioning, setTransitioning] = useState(false);
-  const [users, setUsers] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [dark, setDark] = useDarkMode();
 
@@ -46,7 +44,7 @@ function App() {
           });
           setCurrentUser(response.data);
           const savedView = localStorage.getItem('currentView');
-          const authViews = ['dashboard', 'leaderboard'];
+          const authViews = ['dashboard'];
           if (savedView && authViews.includes(savedView)) {
             setView(savedView);
           } else {
@@ -87,7 +85,7 @@ function App() {
 
   if (loading) return <LoadingScreen />;
 
-  const validViews = ['landing', 'auth-choice', 'login', 'forgot-password', 'leetcode-connect', 'education-info', 'dashboard', 'leaderboard'];
+  const validViews = ['landing', 'auth-choice', 'login', 'forgot-password', 'leetcode-connect', 'education-info', 'dashboard'];
   const isValidView = validViews.includes(view);
 
   return (
@@ -108,7 +106,6 @@ function App() {
       {view === 'leetcode-connect' && <LeetCodeConnect onNavigate={changeView} setError={setError} error={error} showToast={showToast} />}
       {view === 'education-info' && <EducationInfo onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
       {view === 'dashboard' && currentUser && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} />}
-      {view === 'leaderboard' && <Leaderboard users={users} setUsers={setUsers} onNavigate={changeView} currentUser={currentUser} showToast={showToast} />}
       {!isValidView && <NotFound onNavigate={changeView} />}
     </div>
   );

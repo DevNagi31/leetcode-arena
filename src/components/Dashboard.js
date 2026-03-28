@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Trophy, LogOut, RefreshCw, Edit, Lock, Menu,
   BarChart3, Globe, Building2, Code, Users,
-  TrendingUp, Activity
+  Activity
 } from 'lucide-react';
 import ProfileEdit from './ProfileEdit';
 import PasswordChange from './PasswordChange';
@@ -135,25 +135,6 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
             <div className="stat-card">
               <div className="stat-value" style={{ color: '#ef4444' }}>{user.hard || 0}</div>
               <div className="stat-label">HARD</div>
-            </div>
-          </div>
-
-          <div className="section-card">
-            <h3 className="section-title"><TrendingUp size={18} /> Difficulty Breakdown</h3>
-            <div className="difficulty-bars">
-              {[
-                { label: 'Easy', count: user.easy || 0, total: user.problems || 1, color: '#22c55e' },
-                { label: 'Medium', count: user.medium || 0, total: user.problems || 1, color: '#eab308' },
-                { label: 'Hard', count: user.hard || 0, total: user.problems || 1, color: '#ef4444' }
-              ].map(({ label, count, total, color }) => (
-                <div key={label} className="difficulty-bar-row">
-                  <span className="difficulty-label" style={{ color }}>{label}</span>
-                  <div className="difficulty-bar-track">
-                    <div className="difficulty-bar-fill" style={{ width: `${(count / total) * 100}%`, background: color }} />
-                  </div>
-                  <span className="difficulty-count">{count}</span>
-                </div>
-              ))}
             </div>
           </div>
 
