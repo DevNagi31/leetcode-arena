@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: code-manager
+    runtime: node
+    plan: free
+    buildCommand: npm install && cd server && npm install && cd .. && npm run build
+    startCommand: NODE_ENV=production node server/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
