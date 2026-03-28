@@ -1,13 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const { calculateTier } = require('../utils/tier');
 
 // @route   GET /api/leaderboard
 // @desc    Get leaderboard with optional filtering
 router.get('/', async (req, res) => {
   try {
     const { country, institution } = req.query;
-    
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+
     // Build filter
     const filter = {};
     if (country && country !== 'all') {
@@ -17,18 +21,24 @@ router.get('/', async (req, res) => {
       filter.institutionName = institution;
     }
 
-    const users = await User.find(filter)
-      .select('-password')
-      .sort({ score: -1, problems: -1 })
-      .limit(100);
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select('username leetcodeUsername problems easy medium hard score country institutionName currentStreak longestStreak')
+        .sort({ score: -1, problems: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(filter)
+    ]);
 
-    // Add rank to each user
+    // Add rank and tier to each user (rank accounts for page offset)
     const usersWithRank = users.map((user, index) => ({
       ...user.toObject(),
-      rank: index + 1
+      rank: skip + index + 1,
+      tier: calculateTier(user.score)
     }));
 
-    res.json(usersWithRank);
+    const totalPages = Math.ceil(total / limit);
+    res.json({ users: usersWithRank, page, totalPages, total });
   } catch (error) {
     console.error('Leaderboard error:', error);
     res.status(500).json({ message: 'Failed to fetch leaderboard' });

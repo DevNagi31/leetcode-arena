@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const FriendRequest = require('../models/FriendRequest');
 const auth = require('../middleware/auth');
+const { calculateTier } = require('../utils/tier');
 
 // @route GET /api/friends
 // @desc Get my friends list
@@ -16,6 +17,37 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// @route GET /api/friends/leaderboard
+// @desc Get friends leaderboard (friends + self, sorted by score)
+router.get('/leaderboard', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId)
+      .select('friends username leetcodeUsername problems easy medium hard score country institutionName currentStreak');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get friend IDs plus self
+    const ids = [...(user.friends || []), user._id];
+
+    const users = await User.find({ _id: { $in: ids } })
+      .select('username leetcodeUsername problems easy medium hard score country institutionName currentStreak')
+      .sort({ score: -1, problems: -1 });
+
+    const leaderboard = users.map((u, index) => ({
+      ...u.toObject(),
+      rank: index + 1,
+      tier: calculateTier(u.score)
+    }));
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Friends leaderboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route GET /api/friends/requests
 // @desc Get pending friend requests
 router.get('/requests', auth, async (req, res) => {
@@ -24,20 +56,6 @@ router.get('/requests', auth, async (req, res) => {
       to: req.userId,
       status: 'pending'
     }).populate('from', 'username leetcodeUsername problems score country institutionName');
-    res.json(requests);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// @route GET /api/friends/sent
-// @desc Get sent friend requests
-router.get('/sent', auth, async (req, res) => {
-  try {
-    const requests = await FriendRequest.find({
-      from: req.userId,
-      status: 'pending'
-    }).populate('to', 'username leetcodeUsername problems score');
     res.json(requests);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

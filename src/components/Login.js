@@ -17,7 +17,7 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
       localStorage.setItem('token', response.data.token);
       setToken(response.data.token);
       setCurrentUser(response.data.user);
-      showToast('Welcome back! 🎮', 'success');
+      showToast('Welcome back!', 'success');
       onNavigate('dashboard');
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Login failed';
@@ -61,11 +61,17 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
           {loading ? 'LOGGING IN...' : 'LOGIN'}
         </button>
 
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button type="button" className="link-button" onClick={() => onNavigate('forgot-password')} style={{ fontSize: '12px' }}>
+            Forgot your password?
+          </button>
+        </div>
+
         <div className="form-footer">
           <span style={{ color: 'var(--text-secondary)' }}>Don't have an account?</span>
-          <button 
+          <button
             type="button"
-            className="link-button" 
+            className="link-button"
             onClick={() => onNavigate('leetcode-connect')}
           >
             REGISTER

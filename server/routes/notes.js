@@ -7,8 +7,18 @@ const auth = require('../middleware/auth');
 // @desc Get all notes for current user
 router.get('/', auth, async (req, res) => {
   try {
-    const notes = await Note.find({ userId: req.userId }).sort({ updatedAt: -1 });
-    res.json(notes);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = { userId: req.userId };
+    const [notes, total] = await Promise.all([
+      Note.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limit),
+      Note.countDocuments(query)
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    res.json({ notes, page, totalPages, total });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

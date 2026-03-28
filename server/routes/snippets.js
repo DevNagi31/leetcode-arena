@@ -7,8 +7,18 @@ const auth = require('../middleware/auth');
 // @desc Get all snippets for current user
 router.get('/', auth, async (req, res) => {
   try {
-    const snippets = await Snippet.find({ userId: req.userId }).sort({ createdAt: -1 });
-    res.json(snippets);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const query = { userId: req.userId };
+    const [snippets, total] = await Promise.all([
+      Snippet.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Snippet.countDocuments(query)
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    res.json({ snippets, page, totalPages, total });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

@@ -2,7 +2,6 @@ const axios = require('axios');
 
 const fetchLeetCodeStats = async (username) => {
   try {
-    console.log(`Fetching LeetCode stats for: ${username}`);
     
     // Use LeetCode GraphQL API directly
     const query = `
@@ -42,8 +41,6 @@ const fetchLeetCodeStats = async (username) => {
     const easyCount = stats.find(s => s.difficulty === 'Easy')?.count || 0;
     const mediumCount = stats.find(s => s.difficulty === 'Medium')?.count || 0;
     const hardCount = stats.find(s => s.difficulty === 'Hard')?.count || 0;
-
-    console.log(`Stats for ${username}:`, { allCount, easyCount, mediumCount, hardCount });
 
     return {
       username: userData.username,

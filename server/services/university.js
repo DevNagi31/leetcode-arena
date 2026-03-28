@@ -29,39 +29,6 @@ const searchUniversities = async (name, country = null) => {
   }
 };
 
-/**
- * Get universities by country
- */
-const getUniversitiesByCountry = async (country) => {
-  try {
-    const response = await axios.get(
-      `${UNIVERSITY_API}?country=${encodeURIComponent(country)}`,
-      { timeout: 5000 }
-    );
-    
-    return response.data.map(uni => ({
-      name: uni.name,
-      country: uni.country,
-      stateProvince: uni['state-province'] || '',
-      website: uni.web_pages?.[0] || '',
-      domain: uni.domains?.[0] || ''
-    }));
-  } catch (error) {
-    console.error('University API error:', error.message);
-    return [];
-  }
-};
-
-/**
- * Validate if university exists
- */
-const validateUniversity = async (name, country) => {
-  const results = await searchUniversities(name, country);
-  return results.length > 0;
-};
-
 module.exports = {
-  searchUniversities,
-  getUniversitiesByCountry,
-  validateUniversity
+  searchUniversities
 };

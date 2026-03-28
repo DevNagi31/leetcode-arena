@@ -1,22 +1,24 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const TokenBlacklist = require('../models/TokenBlacklist');
+const auth = require('../middleware/auth');
 const { fetchLeetCodeStats } = require('../services/leetcode');
 const { authLimiter, leetcodeLimiter } = require('../middleware/security');
-const { 
-  validate, 
-  registerValidation, 
-  loginValidation, 
-  leetcodeValidation 
+const {
+  validate,
+  registerValidation,
+  loginValidation,
+  leetcodeValidation
 } = require('../middleware/validation');
 
 // Verify LeetCode username
 router.post('/verify-leetcode', leetcodeLimiter, leetcodeValidation, validate, async (req, res) => {
   try {
     const { leetcodeUsername } = req.body;
-    console.log('Verifying LeetCode username:', leetcodeUsername);
 
     // Check if LeetCode username is already linked to an account
     const existingUser = await User.findOne({ leetcodeUsername: leetcodeUsername.trim() });
@@ -161,6 +163,129 @@ router.post('/login', authLimiter, loginValidation, validate, async (req, res) =
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Login failed' });
+  }
+});
+
+// Logout
+router.post('/logout', auth, async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    await new TokenBlacklist({ token }).save();
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Logout failed' });
+  }
+});
+
+// Forgot Password - generate reset code
+router.post('/forgot-password', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Return generic message to avoid user enumeration
+      return res.json({ message: 'Reset code generated', code: null });
+    }
+
+    // Generate 6-digit code
+    const code = crypto.randomInt(100000, 999999).toString();
+    user.resetCode = code;
+    user.resetCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    await user.save();
+
+    // In production, send via email. For now, return in response.
+    res.json({ message: 'Reset code generated', code });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Failed to generate reset code' });
+  }
+});
+
+// Verify Reset Code
+router.post('/verify-reset-code', authLimiter, async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ message: 'Email and code are required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.resetCode || !user.resetCodeExpiry) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    if (user.resetCode !== code) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    if (new Date() > user.resetCodeExpiry) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    // Generate temporary reset token (15 min)
+    const resetToken = jwt.sign(
+      { userId: user._id, purpose: 'password-reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    // Clear the code so it can't be reused
+    user.resetCode = undefined;
+    user.resetCodeExpiry = undefined;
+    await user.save();
+
+    res.json({ message: 'Code verified', resetToken });
+  } catch (error) {
+    console.error('Verify reset code error:', error);
+    res.status(500).json({ message: 'Failed to verify reset code' });
+  }
+});
+
+// Reset Password
+router.post('/reset-password', authLimiter, async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ message: 'Reset token and new password are required' });
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    // Verify the temporary token
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    if (decoded.purpose !== 'password-reset') {
+      return res.status(400).json({ message: 'Invalid reset token' });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // Hash and update password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetCode = undefined;
+    user.resetCodeExpiry = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Failed to reset password' });
   }
 });
 

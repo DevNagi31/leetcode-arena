@@ -8,8 +8,7 @@ const UserSchema = new mongoose.Schema({
   country: { type: String, required: true },
   institutionName: { type: String, required: true },
   year: { type: String, required: true },
-  leetcodeUsername: { type: String, required: true },
-  avatar: { type: String, default: '🎮' },
+  leetcodeUsername: { type: String, required: true, unique: true, trim: true },
   score: { type: Number, default: 0 },
   problems: { type: Number, default: 0 },
   easy: { type: Number, default: 0 },
@@ -41,6 +40,10 @@ const UserSchema = new mongoose.Schema({
     current: { type: Number, default: 0 },
     weekStart: { type: Date, default: Date.now }
   },
+
+  // Password Reset
+  resetCode: { type: String },
+  resetCodeExpiry: { type: Date },
 
   // Email Reminders
   emailReminders: {

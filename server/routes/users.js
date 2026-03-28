@@ -4,6 +4,7 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const { fetchLeetCodeStats } = require('../services/leetcode');
+const { calculateTier } = require('../utils/tier');
 
 // Helper: Calculate streaks
 const calculateStreaks = (activityDates) => {
@@ -100,11 +101,20 @@ router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
 
-    // Calculate rank
-    const usersAbove = await User.countDocuments({ score: { $gt: user.score } });
-    const rank = usersAbove + 1;
+    // Calculate ranks
+    const [globalAbove, countryAbove, uniAbove] = await Promise.all([
+      User.countDocuments({ score: { $gt: user.score } }),
+      User.countDocuments({ country: user.country, score: { $gt: user.score } }),
+      User.countDocuments({ institutionName: user.institutionName, score: { $gt: user.score } })
+    ]);
 
-    res.json({ ...user.toObject(), rank });
+    res.json({
+      ...user.toObject(),
+      rank: globalAbove + 1,
+      countryRank: countryAbove + 1,
+      universityRank: uniAbove + 1,
+      tier: calculateTier(user.score)
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -163,9 +173,12 @@ router.post('/refresh-stats', auth, async (req, res) => {
 
     await user.save();
 
-    // Calculate rank
-    const usersAbove = await User.countDocuments({ score: { $gt: user.score } });
-    const rank = usersAbove + 1;
+    // Calculate ranks
+    const [globalAbove, countryAbove, uniAbove] = await Promise.all([
+      User.countDocuments({ score: { $gt: user.score } }),
+      User.countDocuments({ country: user.country, score: { $gt: user.score } }),
+      User.countDocuments({ institutionName: user.institutionName, score: { $gt: user.score } })
+    ]);
 
     res.json({
       message: 'Stats refreshed successfully',
@@ -173,7 +186,6 @@ router.post('/refresh-stats', auth, async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        avatar: user.avatar,
         country: user.country,
         leetcodeUsername: user.leetcodeUsername,
         problems: user.problems,
@@ -185,14 +197,17 @@ router.post('/refresh-stats', auth, async (req, res) => {
         longestStreak: user.longestStreak,
         totalActiveDays: user.totalActiveDays,
         ranking: user.ranking,
-        rank: rank,
+        rank: globalAbove + 1,
+        countryRank: countryAbove + 1,
+        universityRank: uniAbove + 1,
         educationLevel: user.educationLevel,
         institutionName: user.institutionName,
         year: user.year,
         lastUpdated: user.lastUpdated,
         activityDates: user.activityDates,
         weeklyGoal: user.weeklyGoal,
-        emailReminders: user.emailReminders
+        emailReminders: user.emailReminders,
+        tier: calculateTier(user.score)
       }
     });
   } catch (error) {
@@ -209,9 +224,21 @@ router.put('/profile', auth, async (req, res) => {
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (institutionName) user.institutionName = institutionName;
-    if (year) user.year = year;
-    if (educationLevel) user.educationLevel = educationLevel;
+    // Sanitize and validate inputs
+    if (institutionName) {
+      const sanitized = String(institutionName).trim().slice(0, 100);
+      if (sanitized.length < 2) return res.status(400).json({ message: 'Institution name too short' });
+      user.institutionName = sanitized;
+    }
+    if (year) {
+      const sanitized = String(year).trim().slice(0, 20);
+      user.year = sanitized;
+    }
+    if (educationLevel) {
+      const validLevels = ['High School', 'Undergraduate', 'Graduate', 'PhD', 'Self-taught', 'Bootcamp', 'Other'];
+      if (!validLevels.includes(educationLevel)) return res.status(400).json({ message: 'Invalid education level' });
+      user.educationLevel = educationLevel;
+    }
 
     await user.save();
 
@@ -280,11 +307,20 @@ router.put('/weekly-goal', auth, async (req, res) => {
 router.put('/email-reminders', auth, async (req, res) => {
   try {
     const { enabled, time, timezone } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ message: 'enabled must be a boolean' });
+    }
+
     const user = await User.findById(req.userId);
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    user.emailReminders = { enabled, time, timezone };
+    user.emailReminders = {
+      enabled: !!enabled,
+      time: typeof time === 'string' ? time.slice(0, 10) : '09:00',
+      timezone: typeof timezone === 'string' ? timezone.slice(0, 50) : 'UTC'
+    };
     await user.save();
 
     res.json({ message: 'Email reminders updated', emailReminders: user.emailReminders });
