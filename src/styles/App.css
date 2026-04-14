@@ -1838,6 +1838,38 @@ img, svg, video, canvas { max-width: 100%; }
   color: var(--text-primary);
 }
 
+/* Floating menu (burger) */
+.floating-menu {
+  position: relative;
+  margin-bottom: 12px;
+  display: inline-block;
+}
+
+.floating-menu-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.floating-menu-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-dark);
+}
+
+.floating-menu .dropdown-menu {
+  right: auto;
+  left: 0;
+  top: calc(100% + 6px);
+}
+
 /* Loading Skeleton */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
@@ -1871,29 +1903,11 @@ img, svg, video, canvas { max-width: 100%; }
     align-items: flex-start;
     gap: 12px;
     padding: 16px;
-    padding-right: 16px;
-  }
-
-  .header-actions {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    gap: 6px;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    width: auto;
-    z-index: 5;
   }
 
   .user-info {
     width: 100%;
-    padding-right: 110px;
     min-width: 0;
-  }
-
-  .header-actions .pixel-button {
-    font-size: 11px;
-    padding: 0 10px;
   }
 
   .stats-grid {
@@ -3178,30 +3192,14 @@ img, svg, video, canvas { max-width: 100%; }
     font-size: 12px;
   }
 
-  .header-actions .pixel-button {
-    height: 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 12px !important;
-    font-size: 11px !important;
-    white-space: nowrap;
-    border-radius: 8px;
-  }
-
-  .header-actions .burger-btn {
-    width: 36px;
-    height: 36px;
-    padding: 0 !important;
-    flex-shrink: 0;
-  }
-
   .dropdown-menu {
-    right: 0;
-    left: auto;
-    top: calc(100% + 6px);
     min-width: 200px;
     max-width: calc(100vw - 24px);
+  }
+
+  .floating-menu-btn {
+    width: 36px;
+    height: 36px;
   }
 
   .leaderboard-header {
@@ -3317,28 +3315,11 @@ img, svg, video, canvas { max-width: 100%; }
   }
 
   .user-info {
-    padding-right: 96px;
     gap: 12px;
   }
 
   .user-info h2 {
     font-size: 17px;
-  }
-
-  .header-actions {
-    top: 10px;
-    right: 10px;
-  }
-
-  .header-actions .pixel-button {
-    font-size: 10px !important;
-    height: 34px !important;
-    padding: 0 10px !important;
-  }
-
-  .header-actions .burger-btn {
-    width: 34px !important;
-    height: 34px !important;
   }
 
   .rankings-grid {

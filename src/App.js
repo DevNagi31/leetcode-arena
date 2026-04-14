@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Moon, Sun } from 'lucide-react';
 import Toast from './components/Toast';
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
@@ -91,9 +90,6 @@ function App() {
   return (
     <div className="game-container">
       <PageTransition active={transitioning} />
-      <button className="theme-toggle" onClick={() => setDark(!dark)} title={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
-        {dark ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
       <div style={{ position: 'fixed', top: 0, right: 0, zIndex: 10000 }}>
         {toasts.map(toast => (
           <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
@@ -105,7 +101,7 @@ function App() {
       {view === 'forgot-password' && <ForgotPassword onNavigate={changeView} showToast={showToast} />}
       {view === 'leetcode-connect' && <LeetCodeConnect onNavigate={changeView} setError={setError} error={error} showToast={showToast} />}
       {view === 'education-info' && <EducationInfo onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
-      {view === 'dashboard' && currentUser && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} />}
+      {view === 'dashboard' && currentUser && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} dark={dark} setDark={setDark} />}
       {!isValidView && <NotFound onNavigate={changeView} />}
     </div>
   );

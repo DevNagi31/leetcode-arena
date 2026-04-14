@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Trophy, LogOut, RefreshCw, Edit, Lock, Menu,
+  Trophy, LogOut, Edit, Lock, Menu, Moon, Sun,
   BarChart3, Globe, Building2, Code, Users,
   Activity
 } from 'lucide-react';
@@ -15,8 +15,7 @@ import AnalyticsTab from './AnalyticsTab';
 import { authPost, authPut } from '../utils/api';
 import { calculateTier } from '../utils/tiers';
 
-export default function Dashboard({ user, setUser, onNavigate, onLogout, showToast }) {
-  const [refreshing, setRefreshing] = useState(false);
+export default function Dashboard({ user, setUser, onNavigate, onLogout, showToast, dark, setDark }) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -49,16 +48,6 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
 
   if (!user) return <LoadingScreen />;
 
-  const handleRefreshStats = async () => {
-    setRefreshing(true);
-    try {
-      const response = await authPost('/users/refresh-stats');
-      setUser(response.data.user);
-      showToast('Stats refreshed!', 'success');
-    } catch (error) { showToast('Failed to refresh stats', 'error'); }
-    finally { setRefreshing(false); }
-  };
-
   const handleSaveProfile = async (data) => {
     const response = await authPut('/users/profile', data);
     setUser(response.data.user);
@@ -80,31 +69,32 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
 
   return (
     <div className="dashboard">
+      <div className="floating-menu" ref={menuRef}>
+        <button className="floating-menu-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
+          <Menu size={18} />
+        </button>
+        {menuOpen && (
+          <div className="dropdown-menu">
+            <button onClick={() => { setShowEditProfile(true); setMenuOpen(false); }}><Edit size={14} /> Edit Profile</button>
+            <button onClick={() => { setShowChangePassword(true); setMenuOpen(false); }}><Lock size={14} /> Change Password</button>
+            <button onClick={() => { setDark(!dark); }}>
+              {dark ? <Sun size={14} /> : <Moon size={14} />} {dark ? 'Light Mode' : 'Dark Mode'}
+            </button>
+            <div className="dropdown-divider" />
+            <button className="dropdown-danger" onClick={() => { setMenuOpen(false); onLogout(); }}><LogOut size={14} /> Logout</button>
+          </div>
+        )}
+      </div>
+
       <div className="dashboard-header">
         <div className="user-info">
           <RankBadge tier={user.tier || calculateTier(user.score)} size="large" showProgress />
           <div>
             <h2>{user.username}</h2>
-            <p><Globe size={12} style={{ display: 'inline', marginRight: '4px' }} />{user.country}</p>
-            <p><Building2 size={12} style={{ display: 'inline', marginRight: '4px' }} />{user.institutionName} • {user.year}</p>
+            <p><Globe size={12} />{user.country}</p>
+            <p><Building2 size={12} />{user.institutionName} • {user.year}</p>
             <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>LeetCode: {user.leetcodeUsername}</p>
           </div>
-        </div>
-        <div className="header-actions" ref={menuRef}>
-          <button className="pixel-button" onClick={handleRefreshStats} disabled={refreshing}>
-            <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />{refreshing ? 'SYNCING...' : 'SYNC'}
-          </button>
-          <button className="pixel-button burger-btn" onClick={() => setMenuOpen(!menuOpen)}>
-            <Menu size={18} />
-          </button>
-          {menuOpen && (
-            <div className="dropdown-menu">
-              <button onClick={() => { setShowEditProfile(true); setMenuOpen(false); }}><Edit size={14} /> Edit Profile</button>
-              <button onClick={() => { setShowChangePassword(true); setMenuOpen(false); }}><Lock size={14} /> Change Password</button>
-              <div className="dropdown-divider" />
-              <button className="dropdown-danger" onClick={() => { setMenuOpen(false); onLogout(); }}><LogOut size={14} /> Logout</button>
-            </div>
-          )}
         </div>
       </div>
 
