@@ -928,17 +928,6 @@ img, svg, video, canvas { max-width: 100%; }
     font-size: 48px;
   }
 
-  .dashboard-header {
-    flex-direction: column;
-    gap: 24px;
-    padding: 24px;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-direction: column;
-  }
-
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -1890,7 +1879,9 @@ img, svg, video, canvas { max-width: 100%; }
     top: 12px;
     right: 12px;
     gap: 6px;
+    flex-direction: row;
     flex-wrap: nowrap;
+    width: auto;
     z-index: 5;
   }
 
