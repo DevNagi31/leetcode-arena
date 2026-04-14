@@ -1,14 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function ActivityHeatmap({ activityDates }) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth <= 768
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const year = now.getFullYear();
-  const startDate = new Date(year, 0, 1);
-  const endDate = new Date(year, 11, 31);
 
   const activityMap = {};
   (activityDates || []).forEach(a => { activityMap[a.date] = a.problemsSolved; });
+
+  // On mobile: show last ~17 weeks (4 months rolling window) so cells stay legible.
+  // On desktop: show full current year.
+  let startDate;
+  let endDate;
+  if (isMobile) {
+    endDate = new Date(now);
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 17 * 7);
+  } else {
+    const year = now.getFullYear();
+    startDate = new Date(year, 0, 1);
+    endDate = new Date(year, 11, 31);
+  }
 
   const weeks = [];
   const cursor = new Date(startDate);
@@ -18,14 +39,14 @@ export default function ActivityHeatmap({ activityDates }) {
     const week = [];
     for (let d = 0; d < 7; d++) {
       const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
-      const isBeforeYear = cursor < startDate;
-      const isAfterYear = cursor > endDate;
+      const isBeforeStart = cursor < startDate;
+      const isAfterEnd = cursor > endDate;
       const isFuture = dateStr > todayStr;
       week.push({
         date: dateStr,
         count: activityMap[dateStr] || 0,
         isFuture,
-        isOutOfRange: isBeforeYear || isAfterYear,
+        isOutOfRange: isBeforeStart || isAfterEnd,
         month: cursor.getMonth(),
       });
       cursor.setDate(cursor.getDate() + 1);
@@ -49,21 +70,22 @@ export default function ActivityHeatmap({ activityDates }) {
   const monthLabels = [];
   weeks.forEach((week, wi) => {
     const prevMonth = wi > 0 ? weeks[wi-1][0].month : -1;
-    if (week[0].month !== prevMonth && !week[0].isOutOfRange) {
-      monthLabels[wi] = months[week[0].month];
+    const firstInRange = week.find(d => !d.isOutOfRange);
+    if (firstInRange && firstInRange.month !== prevMonth) {
+      monthLabels[wi] = months[firstInRange.month];
     }
   });
 
   return (
     <div className="custom-heatmap">
-      <div style={{ display: 'flex', width: '100%' }}>
+      <div className="heatmap-row">
         <div className="heatmap-day-labels">
-          <div style={{ height: '20px' }} />
+          <div className="heatmap-month-spacer" />
           {days.map(day => (
             <div key={day} className="heatmap-day-label">{day}</div>
           ))}
         </div>
-        <div className="heatmap-inner" style={{ flex: 1, minWidth: 0 }}>
+        <div className="heatmap-inner">
           <div className="heatmap-months-row">
             {weeks.map((week, wi) => (
               <div key={wi} className="heatmap-month-cell">{monthLabels[wi] || ''}</div>

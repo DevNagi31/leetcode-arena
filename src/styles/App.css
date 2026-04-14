@@ -1215,19 +1215,28 @@ img, svg, video, canvas { max-width: 100%; }
 /* ===== CUSTOM HEATMAP ===== */
 .custom-heatmap {
   width: 100%;
-  overflow-x: auto;
 }
 
-.custom-heatmap > div {
+.heatmap-row {
+  display: flex;
   width: 100%;
+  gap: 6px;
+}
+
+.heatmap-inner {
+  flex: 1;
+  min-width: 0;
+}
+
+.heatmap-month-spacer {
+  height: 20px;
 }
 
 .heatmap-day-labels {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding-top: 16px;
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .heatmap-day-label {
@@ -3283,18 +3292,17 @@ img, svg, video, canvas { max-width: 100%; }
     grid-template-columns: 1fr 1fr;
   }
 
-  .custom-heatmap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 8px;
-  }
-
-  .heatmap-inner {
-    min-width: 640px;
-  }
-
   .heatmap-cell {
-    min-height: 8px;
+    min-height: 12px;
+  }
+
+  .heatmap-day-label {
+    font-size: 9px;
+    width: 22px;
+  }
+
+  .heatmap-month-cell {
+    font-size: 9px;
   }
 }
 
