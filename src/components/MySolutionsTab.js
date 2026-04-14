@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import DOMPurify from 'dompurify';
 import { Code, Search, ChevronDown, Trash2, Edit3, Eye, ExternalLink, Star, X, Clock, Cpu } from 'lucide-react';
 import { CardSkeleton } from './LoadingSkeleton';
+import { authGet, authPost, authPut, authDelete } from '../utils/api';
 
 const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++', 'C', 'Go', 'Rust', 'TypeScript', 'Ruby', 'Swift', 'Kotlin', 'Other'];
 const RATING_LABELS = ['', 'Trivial', 'Easy', 'Medium', 'Hard', 'Brutal'];
@@ -49,16 +49,15 @@ export default function MySolutionsTab({ showToast }) {
     personalRating: 3
   });
 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSolutions(); }, []);
 
   const fetchSolutions = async () => {
     try {
-      const snippetsRes = await axios.get('/api/snippets', { headers });
-      const notesRes = await axios.get('/api/notes', { headers });
+      const [snippetsRes, notesRes] = await Promise.all([
+        authGet('/snippets'),
+        authGet('/notes')
+      ]);
       const snippets = snippetsRes.data.snippets || snippetsRes.data || [];
       const notes = notesRes.data.notes || notesRes.data || [];
 
@@ -78,8 +77,13 @@ export default function MySolutionsTab({ showToast }) {
         difficulty: data.snippet?.difficulty || data.note?.difficulty,
         topics: data.snippet?.topics || data.note?.topics || []
       })));
-    } catch (e) { /* silently fail */ }
-    finally { setLoading(false); }
+    } catch (e) {
+      const status = e.response?.status;
+      const msg = status === 401 ? 'Session expired — please log in again'
+        : status ? `Failed to load solutions (${status})`
+        : 'Network error loading solutions';
+      showToast(msg, 'error');
+    } finally { setLoading(false); }
   };
 
   const extractTitleSlug = (input) => {
@@ -93,7 +97,7 @@ export default function MySolutionsTab({ showToast }) {
     setFetchingProblem(true);
     try {
       const titleSlug = extractTitleSlug(problemInput);
-      const response = await axios.post('/api/leetcode/problem', { titleSlug }, { headers });
+      const response = await authPost('/leetcode/problem', { titleSlug });
       setProblemData(response.data);
       showToast('Problem loaded!', 'success');
     } catch (error) {
@@ -119,9 +123,9 @@ export default function MySolutionsTab({ showToast }) {
           link: `https://leetcode.com/problems/${problemData.titleSlug}/`
         };
         if (editingSnippetId) {
-          await axios.put(`/api/snippets/${editingSnippetId}`, snippetData, { headers });
+          await authPut(`/snippets/${editingSnippetId}`, snippetData);
         } else {
-          await axios.post('/api/snippets', snippetData, { headers });
+          await authPost('/snippets', snippetData);
         }
       }
 
@@ -134,9 +138,9 @@ export default function MySolutionsTab({ showToast }) {
           topics: problemData.topicTags.map(t => t.name)
         };
         if (editingNoteId) {
-          await axios.put(`/api/notes/${editingNoteId}`, noteData, { headers });
+          await authPut(`/notes/${editingNoteId}`, noteData);
         } else {
-          await axios.post('/api/notes', noteData, { headers });
+          await authPost('/notes', noteData);
         }
       }
 
@@ -152,7 +156,7 @@ export default function MySolutionsTab({ showToast }) {
   const handleView = async (solution) => {
     try {
       const titleSlug = extractTitleSlug(solution.problemName);
-      const response = await axios.post('/api/leetcode/problem', { titleSlug }, { headers });
+      const response = await authPost('/leetcode/problem', { titleSlug });
       setViewingSolution({ ...solution, problemDetails: response.data });
     } catch (error) {
       setViewingSolution(solution);
@@ -166,7 +170,7 @@ export default function MySolutionsTab({ showToast }) {
       const titleSlug = solution.snippet?.link ?
         extractTitleSlug(solution.snippet.link) :
         extractTitleSlug(solution.problemName);
-      const response = await axios.post('/api/leetcode/problem', { titleSlug }, { headers });
+      const response = await authPost('/leetcode/problem', { titleSlug });
       setProblemData(response.data);
     } catch (error) {
       showToast('Could not load problem details', 'error');
@@ -190,10 +194,10 @@ export default function MySolutionsTab({ showToast }) {
     if (!window.confirm(`Delete solution for "${solution.problemName}"?`)) return;
     try {
       if (solution.snippet) {
-        await axios.delete(`/api/snippets/${solution.snippet._id}`, { headers });
+        await authDelete(`/snippets/${solution.snippet._id}`);
       }
       if (solution.note) {
-        await axios.delete(`/api/notes/${solution.note._id}`, { headers });
+        await authDelete(`/notes/${solution.note._id}`);
       }
       showToast('Solution deleted', 'info');
       fetchSolutions();
