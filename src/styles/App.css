@@ -478,6 +478,15 @@ img, svg, video, canvas { max-width: 100%; }
   color: var(--text-secondary);
   font-weight: 500;
   letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.user-info p svg {
+  flex-shrink: 0;
+  margin-right: 0 !important;
 }
 
 .header-actions {
@@ -1975,7 +1984,7 @@ img, svg, video, canvas { max-width: 100%; }
   }
 
   .header-actions {
-    justify-content: center;
+    justify-content: flex-end;
   }
 
   .leaderboard-tabs {
@@ -3164,13 +3173,34 @@ img, svg, video, canvas { max-width: 100%; }
 
   .header-actions {
     justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .header-actions .pixel-button {
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+  }
+
+  .header-actions .burger-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0 !important;
+    flex-shrink: 0;
   }
 
   .dropdown-menu {
     right: 0;
     left: auto;
-    min-width: 180px;
-    max-width: calc(100vw - 32px);
+    top: calc(100% + 6px);
+    min-width: 200px;
+    max-width: calc(100vw - 24px);
   }
 
   .leaderboard-header {
