@@ -63,7 +63,7 @@ export default function ActivityHeatmap({ activityDates }) {
             <div key={day} className="heatmap-day-label">{day}</div>
           ))}
         </div>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div className="heatmap-inner" style={{ flex: 1, minWidth: 0 }}>
           <div className="heatmap-months-row">
             {weeks.map((week, wi) => (
               <div key={wi} className="heatmap-month-cell">{monthLabels[wi] || ''}</div>

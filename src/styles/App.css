@@ -446,6 +446,7 @@ img, svg, video, canvas { max-width: 100%; }
   border: 1px solid var(--border);
   border-radius: 10px;
   margin-bottom: 20px;
+  position: relative;
 }
 
 @keyframes slideDown {
@@ -1868,18 +1869,31 @@ img, svg, video, canvas { max-width: 100%; }
   .game-container { padding: 12px; }
 
   .dashboard-header {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: flex-start;
     gap: 12px;
+    padding: 16px;
+    padding-right: 16px;
   }
 
   .header-actions {
-    flex-wrap: wrap;
+    position: absolute;
+    top: 12px;
+    right: 12px;
     gap: 6px;
+    flex-wrap: nowrap;
+    z-index: 5;
+  }
+
+  .user-info {
+    width: 100%;
+    padding-right: 110px;
+    min-width: 0;
   }
 
   .header-actions .pixel-button {
     font-size: 11px;
-    padding: 8px 12px;
+    padding: 0 10px;
   }
 
   .stats-grid {
@@ -3146,15 +3160,8 @@ img, svg, video, canvas { max-width: 100%; }
     max-width: 100%;
   }
 
-  .dashboard-header {
-    padding: 16px;
-    align-items: stretch;
-  }
-
   .user-info {
-    flex-wrap: wrap;
-    gap: 12px;
-    min-width: 0;
+    gap: 14px;
   }
 
   .user-info > div {
@@ -3171,26 +3178,20 @@ img, svg, video, canvas { max-width: 100%; }
     font-size: 12px;
   }
 
-  .header-actions {
-    justify-content: flex-end;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-  }
-
   .header-actions .pixel-button {
-    height: 40px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 14px !important;
-    font-size: 12px !important;
+    padding: 0 12px !important;
+    font-size: 11px !important;
     white-space: nowrap;
+    border-radius: 8px;
   }
 
   .header-actions .burger-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     padding: 0 !important;
     flex-shrink: 0;
   }
@@ -3282,12 +3283,18 @@ img, svg, video, canvas { max-width: 100%; }
     grid-template-columns: 1fr 1fr;
   }
 
-  .heatmap-grid {
-    min-width: 560px;
+  .custom-heatmap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
   }
 
-  .custom-heatmap {
-    -webkit-overflow-scrolling: touch;
+  .heatmap-inner {
+    min-width: 640px;
+  }
+
+  .heatmap-cell {
+    min-height: 8px;
   }
 }
 
@@ -3311,17 +3318,28 @@ img, svg, video, canvas { max-width: 100%; }
   }
 
   .user-info {
-    flex-direction: column;
-    align-items: flex-start;
+    padding-right: 96px;
+    gap: 12px;
   }
 
   .user-info h2 {
-    font-size: 18px;
+    font-size: 17px;
+  }
+
+  .header-actions {
+    top: 10px;
+    right: 10px;
   }
 
   .header-actions .pixel-button {
-    font-size: 11px;
-    padding: 8px 10px;
+    font-size: 10px !important;
+    height: 34px !important;
+    padding: 0 10px !important;
+  }
+
+  .header-actions .burger-btn {
+    width: 34px !important;
+    height: 34px !important;
   }
 
   .rankings-grid {
