@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import { Code, Search, ChevronDown, Trash2, Edit3, Eye, ExternalLink, Star, X, Clock, Cpu } from 'lucide-react';
+import { Code, Search, ChevronDown, Trash2, Edit3, Eye, ExternalLink, Star, X, Clock, Cpu, CheckCircle2, RefreshCw } from 'lucide-react';
 import { CardSkeleton } from './LoadingSkeleton';
 import { authGet, authPost, authPut, authDelete } from '../utils/api';
 
@@ -26,9 +26,14 @@ function RatingStars({ value, onChange }) {
   );
 }
 
-export default function MySolutionsTab({ showToast }) {
+export default function MySolutionsTab({ showToast, user }) {
+  const [section, setSection] = useState('solved');
   const [solutions, setSolutions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [solvedProblems, setSolvedProblems] = useState([]);
+  const [solvedLoading, setSolvedLoading] = useState(false);
+  const [solvedLoaded, setSolvedLoaded] = useState(false);
+  const [solvedError, setSolvedError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingSolution, setViewingSolution] = useState(null);
@@ -51,6 +56,63 @@ export default function MySolutionsTab({ showToast }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSolutions(); }, []);
+
+  useEffect(() => {
+    if (section === 'solved' && !solvedLoaded && !solvedLoading) fetchSolved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
+
+  const fetchSolved = async () => {
+    setSolvedLoading(true);
+    setSolvedError(null);
+    try {
+      const res = await authGet('/leetcode/solved?limit=20');
+      setSolvedProblems(res.data.problems || []);
+      setSolvedLoaded(true);
+    } catch (e) {
+      const msg = e.response?.status === 404
+        ? 'No LeetCode username on your account'
+        : 'Could not load problems from LeetCode';
+      setSolvedError(msg);
+    } finally {
+      setSolvedLoading(false);
+    }
+  };
+
+  const handleAddFromSolved = async (problem) => {
+    resetForm();
+    setProblemInput(`https://leetcode.com/problems/${problem.titleSlug}/`);
+    setShowModal(true);
+    setFetchingProblem(true);
+    try {
+      const response = await authPost('/leetcode/problem', { titleSlug: problem.titleSlug });
+      setProblemData(response.data);
+    } catch (error) {
+      showToast('Could not load problem details', 'error');
+    } finally {
+      setFetchingProblem(false);
+    }
+  };
+
+  const formatRelative = (timestamp) => {
+    const ts = parseInt(timestamp, 10);
+    if (!ts) return '';
+    const diffSec = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+    if (diffSec < 60) return 'just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    if (diffSec < 2592000) return `${Math.floor(diffSec / 86400)}d ago`;
+    return `${Math.floor(diffSec / 2592000)}mo ago`;
+  };
+
+  const solvedSlugSet = new Set(solutions.flatMap(s => {
+    const slugs = [];
+    if (s.snippet?.link) {
+      const m = s.snippet.link.match(/leetcode\.com\/problems\/([^/]+)/);
+      if (m) slugs.push(m[1]);
+    }
+    return slugs;
+  }));
 
   const fetchSolutions = async () => {
     try {
@@ -222,6 +284,105 @@ export default function MySolutionsTab({ showToast }) {
 
   return (
     <div className="solutions-tab">
+      {/* Sub-tabs */}
+      <div className="solutions-subtabs">
+        <button
+          className={`solutions-subtab ${section === 'solved' ? 'active' : ''}`}
+          onClick={() => setSection('solved')}
+        >
+          <CheckCircle2 size={14} /> Solved
+          {solvedLoaded && <span className="solutions-subtab-count">{solvedProblems.length}</span>}
+        </button>
+        <button
+          className={`solutions-subtab ${section === 'mine' ? 'active' : ''}`}
+          onClick={() => setSection('mine')}
+        >
+          <Code size={14} /> My Solutions
+          {!loading && <span className="solutions-subtab-count">{solutions.length}</span>}
+        </button>
+      </div>
+
+      {section === 'solved' && (
+        <div className="solutions-solved-section">
+          <div className="solutions-solved-header">
+            <div>
+              <p className="solutions-solved-hint">
+                Recent accepted submissions on LeetCode
+                {user?.leetcodeUsername && <span className="solutions-solved-user"> · @{user.leetcodeUsername}</span>}
+              </p>
+              <p className="solutions-solved-note">
+                LeetCode's public API only exposes recent submissions, not your full history.
+              </p>
+            </div>
+            <button
+              className="pixel-button"
+              onClick={fetchSolved}
+              disabled={solvedLoading}
+              title="Refresh"
+            >
+              <RefreshCw size={14} /> {solvedLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          {solvedLoading ? (
+            <CardSkeleton lines={4} />
+          ) : solvedError ? (
+            <div className="empty-state">
+              <h3>Couldn't load</h3>
+              <p>{solvedError}</p>
+            </div>
+          ) : solvedProblems.length === 0 ? (
+            <div className="empty-state">
+              <CheckCircle2 size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+              <h3>No recent submissions</h3>
+              <p>Solve a problem on LeetCode and it'll show up here.</p>
+            </div>
+          ) : (
+            <div className="solutions-solved-list">
+              {solvedProblems.map((p) => {
+                const hasSolution = solvedSlugSet.has(p.titleSlug);
+                return (
+                  <div key={p.id} className="solutions-solved-row">
+                    <div className="solutions-solved-info">
+                      <h4 className="solutions-solved-title">{p.title}</h4>
+                      <div className="solutions-solved-meta">
+                        <span className="solutions-meta-item">
+                          <Clock size={12} /> {formatRelative(p.timestamp)}
+                        </span>
+                        <a
+                          href={`https://leetcode.com/problems/${p.titleSlug}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="solutions-view-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={12} /> LeetCode
+                        </a>
+                      </div>
+                    </div>
+                    <div className="solutions-solved-actions">
+                      {hasSolution ? (
+                        <span className="solutions-saved-badge" title="You've already saved a solution">
+                          <CheckCircle2 size={12} /> Saved
+                        </span>
+                      ) : (
+                        <button
+                          className="pixel-button primary"
+                          onClick={() => handleAddFromSolved(p)}
+                        >
+                          + Add Solution
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {section === 'mine' && (<>
       {/* Header */}
       <div className="solutions-header">
         <div className="solutions-search">
@@ -324,6 +485,7 @@ export default function MySolutionsTab({ showToast }) {
           ))}
         </div>
       )}
+      </>)}
 
       {/* Add/Edit Modal */}
       {showModal && (

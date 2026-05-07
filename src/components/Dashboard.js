@@ -153,7 +153,7 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
           onSaveGoal={handleSaveGoal}
         />
       )}
-      {activeTab === 'solutions' && <MySolutionsTab showToast={showToast} />}
+      {activeTab === 'solutions' && <MySolutionsTab showToast={showToast} user={user} />}
       {activeTab === 'friends' && <FriendsTab currentUser={user} showToast={showToast} />}
       {activeTab === 'leaderboard' && (
         <Leaderboard

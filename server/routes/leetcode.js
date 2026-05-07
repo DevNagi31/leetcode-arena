@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const auth = require('../middleware/auth');
+const User = require('../models/User');
 
 // @route POST /api/leetcode/problem
 // @desc Fetch problem details from LeetCode
@@ -66,6 +67,54 @@ router.post('/problem', auth, async (req, res) => {
   } catch (error) {
     console.error('LeetCode API error:', error);
     res.status(500).json({ message: 'Failed to fetch problem' });
+  }
+});
+
+// @route GET /api/leetcode/solved
+// @desc Fetch recent accepted submissions for the logged-in user's LeetCode account
+router.get('/solved', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('leetcodeUsername');
+    if (!user || !user.leetcodeUsername) {
+      return res.status(404).json({ message: 'LeetCode username not set' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+
+    const query = `
+      query recentAcSubmissions($username: String!, $limit: Int!) {
+        recentAcSubmissionList(username: $username, limit: $limit) {
+          id
+          title
+          titleSlug
+          timestamp
+        }
+      }
+    `;
+
+    const response = await axios.post('https://leetcode.com/graphql', {
+      query,
+      variables: { username: user.leetcodeUsername, limit }
+    }, {
+      headers: { 'Content-Type': 'application/json', 'Referer': 'https://leetcode.com' },
+      timeout: 10000
+    });
+
+    const submissions = response.data?.data?.recentAcSubmissionList || [];
+
+    // Deduplicate by titleSlug, keep first (most recent) occurrence
+    const seen = new Set();
+    const unique = [];
+    for (const s of submissions) {
+      if (seen.has(s.titleSlug)) continue;
+      seen.add(s.titleSlug);
+      unique.push(s);
+    }
+
+    res.json({ username: user.leetcodeUsername, problems: unique });
+  } catch (error) {
+    console.error('LeetCode solved fetch error:', error.message);
+    res.status(500).json({ message: 'Failed to fetch solved problems' });
   }
 });
 
