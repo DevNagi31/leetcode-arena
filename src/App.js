@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Toast from './components/Toast';
 import Login from './components/Login';
@@ -14,6 +14,36 @@ import LoadingScreen from './components/LoadingScreen';
 import useDarkMode from './utils/useDarkMode';
 import { API_URL } from './utils/api';
 import './styles/App.css';
+
+/* Cursor-following accent glow for non-landing pages */
+function CursorGlow() {
+  const ref = useRef(null);
+  useEffect(() => {
+    let raf = 0;
+    let mx = window.innerWidth / 2;
+    let my = window.innerHeight / 2;
+    const apply = () => {
+      raf = 0;
+      const el = ref.current;
+      if (el) {
+        el.style.setProperty('--mx', `${mx}px`);
+        el.style.setProperty('--my', `${my}px`);
+      }
+    };
+    const onMove = (e) => {
+      mx = e.clientX;
+      my = e.clientY;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    apply();
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  return <div className="app-cursor-glow" ref={ref} aria-hidden="true" />;
+}
 
 function App() {
   const [view, setView] = useState(() => {
@@ -89,6 +119,7 @@ function App() {
 
   return (
     <div className="game-container">
+      {view !== 'landing' && <CursorGlow />}
       <PageTransition active={transitioning} />
       <div style={{ position: 'fixed', top: 0, right: 0, zIndex: 10000 }}>
         {toasts.map(toast => (
