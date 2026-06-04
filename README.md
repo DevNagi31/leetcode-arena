@@ -4,6 +4,13 @@ A developer growth platform that connects to your LeetCode account to track prog
 
 ## Screenshots
 
+### Landing Page
+A cozy, video-driven hero with a scroll-accumulation feature section and interactive cursor effects.
+
+![Landing Page](screenshots/landing.png)
+
+![Feature Highlights](screenshots/landing-features.png)
+
 ### Dashboard Overview
 Track your total problems solved, difficulty breakdown, and estimated topic coverage.
 
