@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Snippet = require('../models/Snippet');
 const auth = require('../middleware/auth');
+const { validate, objectIdParam, snippetValidation } = require('../middleware/validation');
 
 // @route GET /api/snippets
 // @desc Get all snippets for current user
@@ -26,7 +27,7 @@ router.get('/', auth, async (req, res) => {
 
 // @route POST /api/snippets
 // @desc Create new snippet
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, snippetValidation(), validate, async (req, res) => {
   try {
     const { problemName, difficulty, language, code, runtime, memory, topics, link } = req.body;
     const snippet = new Snippet({
@@ -49,7 +50,7 @@ router.post('/', auth, async (req, res) => {
 
 // @route PUT /api/snippets/:id
 // @desc Update snippet
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, objectIdParam, snippetValidation({ optional: true }), validate, async (req, res) => {
   try {
     const snippet = await Snippet.findOne({ _id: req.params.id, userId: req.userId });
     if (!snippet) return res.status(404).json({ message: 'Snippet not found' });
@@ -73,7 +74,7 @@ router.put('/:id', auth, async (req, res) => {
 
 // @route DELETE /api/snippets/:id
 // @desc Delete snippet
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, objectIdParam, validate, async (req, res) => {
   try {
     const result = await Snippet.deleteOne({ _id: req.params.id, userId: req.userId });
     if (result.deletedCount === 0) return res.status(404).json({ message: 'Snippet not found' });

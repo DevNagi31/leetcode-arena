@@ -1,4 +1,13 @@
-const { body, validationResult } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
+
+const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
+
+// Reusable: a Mongo ObjectId in the route params
+const objectIdParam = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid id'),
+];
 
 // Validation middleware
 const validate = (req, res, next) => {
@@ -75,9 +84,90 @@ const leetcodeValidation = [
     .withMessage('LeetCode username must be 1-50 characters'),
 ];
 
+// Password reset validation rules
+const forgotPasswordValidation = [
+  body('email')
+    .trim()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Must be a valid email'),
+];
+
+const verifyResetCodeValidation = [
+  body('email')
+    .trim()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Must be a valid email'),
+  body('code')
+    .isString()
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage('Code must be a 6-digit number'),
+];
+
+const resetPasswordValidation = [
+  body('resetToken')
+    .isString()
+    .notEmpty()
+    .withMessage('Reset token is required'),
+  body('newPassword')
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+];
+
+// Snippet validation. `optional` (true for updates) relaxes required-field checks
+// while still enforcing type/length on any field that is present.
+const snippetValidation = ({ optional = false } = {}) => {
+  const maybe = (chain) => (optional ? chain.optional() : chain);
+  return [
+    maybe(body('problemName').isString()).bail().trim().isLength({ min: 1, max: 200 })
+      .withMessage('problemName must be 1-200 characters'),
+    maybe(body('difficulty').isIn(DIFFICULTIES))
+      .withMessage('difficulty must be Easy, Medium, or Hard'),
+    maybe(body('language').isString()).bail().trim().isLength({ min: 1, max: 50 })
+      .withMessage('language must be 1-50 characters'),
+    maybe(body('code').isString()).bail().isLength({ min: 1, max: 50000 })
+      .withMessage('code must be 1-50000 characters'),
+    body('runtime').optional().isString().isLength({ max: 100 }),
+    body('memory').optional().isString().isLength({ max: 100 }),
+    body('link').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
+    body('topics').optional().isArray({ max: 50 }).withMessage('topics must be an array'),
+    body('topics.*').optional().isString().isLength({ max: 50 }),
+  ];
+};
+
+// Note validation.
+const noteValidation = ({ optional = false } = {}) => {
+  const maybe = (chain) => (optional ? chain.optional() : chain);
+  return [
+    maybe(body('problemName').isString()).bail().trim().isLength({ min: 1, max: 200 })
+      .withMessage('problemName must be 1-200 characters'),
+    maybe(body('difficulty').isIn(DIFFICULTIES))
+      .withMessage('difficulty must be Easy, Medium, or Hard'),
+    maybe(body('content').isString()).bail().isLength({ min: 1, max: 50000 })
+      .withMessage('content must be 1-50000 characters'),
+    body('personalRating').optional({ values: 'null' }).isInt({ min: 1, max: 5 })
+      .withMessage('personalRating must be between 1 and 5'),
+    body('resources').optional().isArray({ max: 50 }).withMessage('resources must be an array'),
+    body('resources.*').optional().isString().isLength({ max: 500 }),
+    body('topics').optional().isArray({ max: 50 }).withMessage('topics must be an array'),
+    body('topics.*').optional().isString().isLength({ max: 50 }),
+  ];
+};
+
 module.exports = {
   validate,
+  objectIdParam,
   registerValidation,
   loginValidation,
-  leetcodeValidation
+  leetcodeValidation,
+  forgotPasswordValidation,
+  verifyResetCodeValidation,
+  resetPasswordValidation,
+  snippetValidation,
+  noteValidation
 };
