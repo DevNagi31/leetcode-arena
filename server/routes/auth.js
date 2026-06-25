@@ -12,7 +12,10 @@ const {
   validate,
   registerValidation,
   loginValidation,
-  leetcodeValidation
+  leetcodeValidation,
+  forgotPasswordValidation,
+  verifyResetCodeValidation,
+  resetPasswordValidation
 } = require('../middleware/validation');
 
 // Verify LeetCode username
@@ -179,17 +182,17 @@ router.post('/logout', auth, async (req, res) => {
 });
 
 // Forgot Password - generate reset code
-router.post('/forgot-password', authLimiter, async (req, res) => {
+router.post('/forgot-password', authLimiter, forgotPasswordValidation, validate, async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
-    }
 
     const user = await User.findOne({ email });
+
+    // Always return the same generic response to avoid user enumeration.
+    const genericResponse = { message: 'If an account exists for that email, a reset code has been sent.' };
+
     if (!user) {
-      // Return generic message to avoid user enumeration
-      return res.json({ message: 'Reset code generated', code: null });
+      return res.json(genericResponse);
     }
 
     // Generate 6-digit code
@@ -198,8 +201,13 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
     user.resetCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     await user.save();
 
-    // In production, send via email. For now, return in response.
-    res.json({ message: 'Reset code generated', code });
+    // Deliver the code out-of-band (never in the HTTP response).
+    // TODO: integrate a real email provider (e.g. nodemailer/SES) here.
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[dev] Password reset code for ${email}: ${code}`);
+    }
+
+    res.json(genericResponse);
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ message: 'Failed to generate reset code' });
@@ -207,12 +215,9 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
 });
 
 // Verify Reset Code
-router.post('/verify-reset-code', authLimiter, async (req, res) => {
+router.post('/verify-reset-code', authLimiter, verifyResetCodeValidation, validate, async (req, res) => {
   try {
     const { email, code } = req.body;
-    if (!email || !code) {
-      return res.status(400).json({ message: 'Email and code are required' });
-    }
 
     const user = await User.findOne({ email });
     if (!user || !user.resetCode || !user.resetCodeExpiry) {
@@ -247,16 +252,9 @@ router.post('/verify-reset-code', authLimiter, async (req, res) => {
 });
 
 // Reset Password
-router.post('/reset-password', authLimiter, async (req, res) => {
+router.post('/reset-password', authLimiter, resetPasswordValidation, validate, async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
-    if (!resetToken || !newPassword) {
-      return res.status(400).json({ message: 'Reset token and new password are required' });
-    }
-
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters' });
-    }
 
     // Verify the temporary token
     let decoded;
