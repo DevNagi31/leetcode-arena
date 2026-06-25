@@ -7,6 +7,7 @@ const User = require('../models/User');
 const TokenBlacklist = require('../models/TokenBlacklist');
 const auth = require('../middleware/auth');
 const { fetchLeetCodeStats } = require('../services/leetcode');
+const { sendPasswordResetCode } = require('../services/email');
 const { authLimiter, leetcodeLimiter } = require('../middleware/security');
 const {
   validate,
@@ -201,10 +202,12 @@ router.post('/forgot-password', authLimiter, forgotPasswordValidation, validate,
     user.resetCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     await user.save();
 
-    // Deliver the code out-of-band (never in the HTTP response).
-    // TODO: integrate a real email provider (e.g. nodemailer/SES) here.
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[dev] Password reset code for ${email}: ${code}`);
+    // Deliver the code out-of-band (never in the HTTP response). We swallow
+    // delivery errors so the response stays generic and enumeration-safe.
+    try {
+      await sendPasswordResetCode(email, code);
+    } catch (mailErr) {
+      console.error('Failed to send password reset email:', mailErr.message);
     }
 
     res.json(genericResponse);
