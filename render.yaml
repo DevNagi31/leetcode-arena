@@ -14,3 +14,17 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      # SMTP — required to deliver verification & password-reset emails.
+      # Values are entered in the Render dashboard (sync: false = not committed).
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
