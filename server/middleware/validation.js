@@ -77,16 +77,6 @@ const loginValidation = [
     .withMessage('Password is required'),
 ];
 
-// LeetCode username validation
-const leetcodeValidation = [
-  body('leetcodeUsername')
-    .trim()
-    .notEmpty()
-    .withMessage('LeetCode username is required')
-    .isLength({ min: 1, max: 50 })
-    .withMessage('LeetCode username must be 1-50 characters'),
-];
-
 // Password reset validation rules
 const forgotPasswordValidation = [
   body('email')
@@ -176,7 +166,6 @@ module.exports = {
   objectIdParam,
   registerValidation,
   loginValidation,
-  leetcodeValidation,
   forgotPasswordValidation,
   verifyResetCodeValidation,
   resetPasswordValidation,

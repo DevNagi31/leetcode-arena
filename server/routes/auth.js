@@ -8,12 +8,11 @@ const TokenBlacklist = require('../models/TokenBlacklist');
 const auth = require('../middleware/auth');
 const { fetchLeetCodeStats } = require('../services/leetcode');
 const { sendPasswordResetCode, sendVerificationCode } = require('../services/email');
-const { authLimiter, leetcodeLimiter } = require('../middleware/security');
+const { authLimiter } = require('../middleware/security');
 const {
   validate,
   registerValidation,
   loginValidation,
-  leetcodeValidation,
   forgotPasswordValidation,
   verifyResetCodeValidation,
   resetPasswordValidation,
@@ -22,29 +21,6 @@ const {
 
 // Generate a 6-digit numeric code as a string.
 const generateCode = () => crypto.randomInt(100000, 999999).toString();
-
-// Verify LeetCode username
-router.post('/verify-leetcode', leetcodeLimiter, leetcodeValidation, validate, async (req, res) => {
-  try {
-    const { leetcodeUsername } = req.body;
-
-    // Check if LeetCode username is already linked to an account
-    const existingUser = await User.findOne({ leetcodeUsername: leetcodeUsername.trim() });
-    if (existingUser) {
-      return res.status(409).json({ 
-        message: 'This LeetCode account is already linked to another user. Please login instead.',
-        alreadyExists: true 
-      });
-    }
-
-    const leetcodeData = await fetchLeetCodeStats(leetcodeUsername);
-    
-    res.json(leetcodeData);
-  } catch (error) {
-    console.error('LeetCode verification error:', error);
-    res.status(400).json({ message: error.message });
-  }
-});
 
 // Register
 router.post('/register', authLimiter, registerValidation, validate, async (req, res) => {

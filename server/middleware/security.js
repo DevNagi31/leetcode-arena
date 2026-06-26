@@ -19,15 +19,7 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-// LeetCode verification rate limiter
-const leetcodeLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 requests per minute
-  message: 'Too many LeetCode verification requests, please try again later.',
-});
-
 module.exports = {
   apiLimiter,
-  authLimiter,
-  leetcodeLimiter
+  authLimiter
 };
