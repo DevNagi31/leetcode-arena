@@ -13,9 +13,12 @@ const objectIdParam = [
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
-      message: 'Validation error', 
-      errors: errors.array() 
+    const all = errors.array();
+    // Surface the first specific message so clients can show a useful reason
+    // instead of a generic "Validation error".
+    return res.status(400).json({
+      message: all[0]?.msg || 'Validation error',
+      errors: all
     });
   }
   next();
@@ -74,16 +77,6 @@ const loginValidation = [
     .withMessage('Password is required'),
 ];
 
-// LeetCode username validation
-const leetcodeValidation = [
-  body('leetcodeUsername')
-    .trim()
-    .notEmpty()
-    .withMessage('LeetCode username is required')
-    .isLength({ min: 1, max: 50 })
-    .withMessage('LeetCode username must be 1-50 characters'),
-];
-
 // Password reset validation rules
 const forgotPasswordValidation = [
   body('email')
@@ -117,6 +110,15 @@ const resetPasswordValidation = [
     .withMessage('Password must be at least 8 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+];
+
+// Email verification code (6 digits)
+const verifyEmailValidation = [
+  body('code')
+    .isString()
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage('Code must be a 6-digit number'),
 ];
 
 // Snippet validation. `optional` (true for updates) relaxes required-field checks
@@ -164,10 +166,10 @@ module.exports = {
   objectIdParam,
   registerValidation,
   loginValidation,
-  leetcodeValidation,
   forgotPasswordValidation,
   verifyResetCodeValidation,
   resetPasswordValidation,
+  verifyEmailValidation,
   snippetValidation,
   noteValidation
 };

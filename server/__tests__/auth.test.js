@@ -62,18 +62,16 @@ describe('Password hashing', () => {
 });
 
 describe('Rate limit config', () => {
-  const { apiLimiter, authLimiter, leetcodeLimiter } = require('../middleware/security');
+  const { apiLimiter, authLimiter } = require('../middleware/security');
 
   test('rate limiters are defined', () => {
     expect(apiLimiter).toBeDefined();
     expect(authLimiter).toBeDefined();
-    expect(leetcodeLimiter).toBeDefined();
   });
 
   test('rate limiters are functions (middleware)', () => {
     expect(typeof apiLimiter).toBe('function');
     expect(typeof authLimiter).toBe('function');
-    expect(typeof leetcodeLimiter).toBe('function');
   });
 });
 

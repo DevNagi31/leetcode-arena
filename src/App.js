@@ -4,8 +4,8 @@ import Toast from './components/Toast';
 import Login from './components/Login';
 import LandingPage from './components/LandingPage';
 import AuthChoice from './components/AuthChoice';
-import LeetCodeConnect from './components/LeetCodeConnect';
-import EducationInfo from './components/EducationInfo';
+import SignUp from './components/SignUp';
+import EmailVerify from './components/EmailVerify';
 import Dashboard from './components/Dashboard';
 import ForgotPassword from './components/ForgotPassword';
 import NotFound from './components/NotFound';
@@ -114,8 +114,11 @@ function App() {
 
   if (loading) return <LoadingScreen />;
 
-  const validViews = ['landing', 'auth-choice', 'login', 'forgot-password', 'leetcode-connect', 'education-info', 'dashboard'];
+  const validViews = ['landing', 'auth-choice', 'login', 'forgot-password', 'signup', 'verify-email', 'dashboard'];
   const isValidView = validViews.includes(view);
+
+  // Block access to the dashboard until the user's email is verified.
+  const needsVerification = currentUser && currentUser.emailVerified === false;
 
   return (
     <div className="game-container">
@@ -130,9 +133,10 @@ function App() {
       {view === 'auth-choice' && <AuthChoice onNavigate={changeView} />}
       {view === 'login' && <Login onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} showToast={showToast} />}
       {view === 'forgot-password' && <ForgotPassword onNavigate={changeView} showToast={showToast} />}
-      {view === 'leetcode-connect' && <LeetCodeConnect onNavigate={changeView} setError={setError} error={error} showToast={showToast} />}
-      {view === 'education-info' && <EducationInfo onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
-      {view === 'dashboard' && currentUser && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} dark={dark} setDark={setDark} />}
+      {view === 'signup' && <SignUp onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
+      {view === 'verify-email' && currentUser && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} />}
+      {view === 'dashboard' && currentUser && needsVerification && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} />}
+      {view === 'dashboard' && currentUser && !needsVerification && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} dark={dark} setDark={setDark} />}
       {!isValidView && <NotFound onNavigate={changeView} />}
     </div>
   );
