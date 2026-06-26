@@ -10,7 +10,7 @@ export default function AuthChoice({ onNavigate }) {
         Track your coding journey and compete with peers
       </p>
       <div className="auth-choice-grid">
-        <button className="pixel-button primary full-width" onClick={() => onNavigate('leetcode-connect')}>
+        <button className="pixel-button primary full-width" onClick={() => onNavigate('signup')}>
           <UserPlus size={18} strokeWidth={2.5} /> SIGN UP
         </button>
         <button className="pixel-button full-width" onClick={() => onNavigate('login')}>

@@ -67,4 +67,22 @@ async function sendPasswordResetCode(to, code) {
   return sendEmail({ to, subject, text, html });
 }
 
-module.exports = { sendEmail, sendPasswordResetCode, isEmailConfigured: isConfigured };
+/**
+ * Send an email-verification code (used at signup).
+ */
+async function sendVerificationCode(to, code) {
+  const subject = 'Verify your LeetCode Arena email';
+  const text =
+    `Welcome to LeetCode Arena!\n\n` +
+    `Your email verification code is: ${code}\n\n` +
+    `This code expires in 15 minutes. If you didn't sign up, you can ignore this email.`;
+  const html =
+    `<p>Welcome to LeetCode Arena!</p>` +
+    `<p>Your email verification code is:</p>` +
+    `<p style="font-size:24px;font-weight:bold;letter-spacing:3px">${code}</p>` +
+    `<p>This code expires in 15 minutes. If you didn't sign up, you can ignore this email.</p>`;
+
+  return sendEmail({ to, subject, text, html });
+}
+
+module.exports = { sendEmail, sendPasswordResetCode, sendVerificationCode, isEmailConfigured: isConfigured };

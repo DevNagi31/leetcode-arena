@@ -17,8 +17,13 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
       localStorage.setItem('token', response.data.token);
       setToken(response.data.token);
       setCurrentUser(response.data.user);
-      showToast('Welcome back!', 'success');
-      onNavigate('dashboard');
+      if (response.data.user?.emailVerified === false) {
+        showToast('Please verify your email to continue.', 'info');
+        onNavigate('verify-email');
+      } else {
+        showToast('Welcome back!', 'success');
+        onNavigate('dashboard');
+      }
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Login failed';
       showToast(errorMsg, 'error');
@@ -72,7 +77,7 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
           <button
             type="button"
             className="link-button"
-            onClick={() => onNavigate('leetcode-connect')}
+            onClick={() => onNavigate('signup')}
           >
             REGISTER
           </button>

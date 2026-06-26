@@ -41,6 +41,11 @@ const UserSchema = new mongoose.Schema({
     weekStart: { type: Date, default: Date.now }
   },
 
+  // Email Verification
+  emailVerified: { type: Boolean, default: false },
+  verificationCode: { type: String },
+  verificationCodeExpiry: { type: Date },
+
   // Password Reset
   resetCode: { type: String },
   resetCodeExpiry: { type: Date },
