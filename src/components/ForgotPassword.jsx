@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../utils/api';
 
+// Must mirror the backend rule (min 8, one lowercase, one uppercase, one digit)
+// — checking only the length here meant a valid-looking password was rejected
+// by the server with a confusing error.
+const PASSWORD_HINT = 'Password must be at least 8 characters with an uppercase letter, a lowercase letter and a number';
+const isStrongPassword = (pw) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pw);
+
 export default function ForgotPassword({ onNavigate, showToast }) {
   const [step, setStep] = useState('email'); // email | code | newPassword
   const [email, setEmail] = useState('');
@@ -49,8 +55,8 @@ export default function ForgotPassword({ onNavigate, showToast }) {
       setError('Passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (!isStrongPassword(newPassword)) {
+      setError(PASSWORD_HINT);
       return;
     }
     setLoading(true);
@@ -119,8 +125,11 @@ export default function ForgotPassword({ onNavigate, showToast }) {
         <form className="pixel-form" onSubmit={handleResetPassword}>
           <div className="form-group">
             <label>NEW PASSWORD</label>
-            <input type="password" className="pixel-input" placeholder="Min 8 characters"
+            <input type="password" className="pixel-input" placeholder="Min 8 chars, upper, lower & number"
               value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+            <p style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+              {PASSWORD_HINT}
+            </p>
           </div>
           <div className="form-group">
             <label>CONFIRM PASSWORD</label>

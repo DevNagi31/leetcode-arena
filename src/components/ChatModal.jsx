@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import io from 'socket.io-client';
 import { User, MessageCircle, Send, X as XIcon } from 'lucide-react';
+import { authGet, authPost, SOCKET_URL } from '../utils/api';
 
 export default function ChatModal({ friend, currentUser, onClose, showToast }) {
   const [messages, setMessages] = useState([]);
@@ -16,9 +16,7 @@ export default function ChatModal({ friend, currentUser, onClose, showToast }) {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`/api/messages/${friend._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await authGet(`/messages/${friend._id}`);
         const data = response.data;
         setMessages(data.messages || data || []);
       } catch (error) {
@@ -28,13 +26,17 @@ export default function ChatModal({ friend, currentUser, onClose, showToast }) {
 
     fetchMessages();
 
-    const newSocket = io(window.location.origin, {
+    // Must be the API origin, not the page origin: in development the page is
+    // served from :3000 while the Socket.io server listens on :5001, and CRA's
+    // proxy does not carry the websocket upgrade.
+    const newSocket = io(SOCKET_URL, {
       auth: { token }
     });
     setSocket(newSocket);
 
     newSocket.on('receive_message', (message) => {
       if (message.from === friend._id) {
+        setIsTyping(false);
         setMessages(prev => {
           if (prev.find(m => m._id === message._id)) return prev;
           return [...prev, message];
@@ -45,8 +47,10 @@ export default function ChatModal({ friend, currentUser, onClose, showToast }) {
 
     newSocket.on('message_sent', (message) => {
       setMessages(prev => {
-        const withoutOptimistic = prev.filter(m => typeof m._id !== 'number');
-        if (withoutOptimistic.find(m => m._id === message._id)) return withoutOptimistic;
+        // Drop the locally-rendered placeholder for this send, then append the
+        // server's copy (guarding against a duplicate echo).
+        const withoutOptimistic = prev.filter(m => !m.pending);
+        if (withoutOptimistic.some(m => m._id === message._id)) return withoutOptimistic;
         return [...withoutOptimistic, message];
       });
     });
@@ -86,16 +90,15 @@ export default function ChatModal({ friend, currentUser, onClose, showToast }) {
           content: newMessage.trim()
         });
       } else {
-        await axios.post('/api/messages/send', {
+        await authPost('/messages/send', {
           to: friend._id,
           content: newMessage.trim()
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         });
       }
 
       const tempMessage = {
-        _id: Date.now(),
+        _id: `pending-${Date.now()}`,
+        pending: true,
         from: currentUser._id || currentUser.id,
         to: friend._id,
         content: newMessage.trim(),

@@ -4,14 +4,16 @@
   "description": "Code Manager - Developer Growth Platform",
   "main": "server/server.js",
   "scripts": {
-    "start": "react-scripts start",
+    "start": "vite",
     "server": "node server/server.js",
     "dev": "concurrently \"npm run server\" \"npm start\"",
-    "build": "react-scripts build",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "render-build": "npm install && cd server && npm install && cd .. && npm run build",
     "render-start": "NODE_ENV=production node server/server.js",
-    "production": "npm run build && NODE_ENV=production node server/server.js",
-    "test": "react-scripts test"
+    "production": "npm run build && NODE_ENV=production node server/server.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -19,35 +21,16 @@
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "concurrently": "^8.2.1"
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^8.2.1",
+    "jsdom": "^25.0.1",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
   },
-  "jest": {
-    "transformIgnorePatterns": [
-      "node_modules/(?!(axios|lucide-react|socket.io-client)/)"
-    ]
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "proxy": "http://localhost:5001"
+  "type": "module"
 }

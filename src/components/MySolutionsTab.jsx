@@ -151,7 +151,13 @@ export default function MySolutionsTab({ showToast, user }) {
   const extractTitleSlug = (input) => {
     const urlMatch = input.match(/leetcode\.com\/problems\/([^/]+)/);
     if (urlMatch) return urlMatch[1];
-    return input.toLowerCase().replace(/\s+/g, '-');
+    // Slugify a typed title the way LeetCode does: drop punctuation, then
+    // hyphenate. Leaving punctuation in produced slugs the API always 404s on.
+    return input
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
   };
 
   const handleFetchProblem = async () => {
@@ -172,8 +178,13 @@ export default function MySolutionsTab({ showToast, user }) {
 
   const handleSaveSolution = async () => {
     if (!problemData) return;
+    if (!solutionData.code.trim() && !solutionData.notes.trim()) {
+      showToast('Add some code or notes before saving', 'error');
+      return;
+    }
+    const topics = (problemData.topicTags || []).map(t => t.name);
     try {
-      if (solutionData.code) {
+      if (solutionData.code.trim()) {
         const snippetData = {
           problemName: problemData.title,
           difficulty: problemData.difficulty,
@@ -181,7 +192,7 @@ export default function MySolutionsTab({ showToast, user }) {
           code: solutionData.code,
           runtime: solutionData.runtime,
           memory: solutionData.memory,
-          topics: problemData.topicTags.map(t => t.name),
+          topics,
           link: `https://leetcode.com/problems/${problemData.titleSlug}/`
         };
         if (editingSnippetId) {
@@ -191,13 +202,13 @@ export default function MySolutionsTab({ showToast, user }) {
         }
       }
 
-      if (solutionData.notes) {
+      if (solutionData.notes.trim()) {
         const noteData = {
           problemName: problemData.title,
           difficulty: problemData.difficulty,
           content: solutionData.notes,
           personalRating: solutionData.personalRating,
-          topics: problemData.topicTags.map(t => t.name)
+          topics
         };
         if (editingNoteId) {
           await authPut(`/notes/${editingNoteId}`, noteData);
@@ -211,13 +222,15 @@ export default function MySolutionsTab({ showToast, user }) {
       resetForm();
       fetchSolutions();
     } catch (e) {
-      showToast('Failed to save', 'error');
+      showToast(e.response?.data?.message || 'Failed to save', 'error');
     }
   };
 
   const handleView = async (solution) => {
     try {
-      const titleSlug = extractTitleSlug(solution.problemName);
+      const titleSlug = solution.snippet?.link
+        ? extractTitleSlug(solution.snippet.link)
+        : extractTitleSlug(solution.problemName);
       const response = await authPost('/leetcode/problem', { titleSlug });
       setViewingSolution({ ...solution, problemDetails: response.data });
     } catch (error) {
@@ -435,8 +448,8 @@ export default function MySolutionsTab({ showToast, user }) {
         </div>
       ) : (
         <div className="solutions-list">
-          {filteredSolutions.map((sol, idx) => (
-            <div key={idx} className="solutions-card">
+          {filteredSolutions.map((sol) => (
+            <div key={sol.problemName} className="solutions-card">
               <div className="solutions-card-main">
                 <div className="solutions-card-info">
                   <div className="solutions-card-title-row">
@@ -523,12 +536,12 @@ export default function MySolutionsTab({ showToast, user }) {
                     <div className="solutions-problem-header">
                       <h3>{problemData.title}</h3>
                       <div className="solutions-problem-badges">
-                        <span className={`difficulty-badge ${problemData.difficulty.toLowerCase()}`}>{problemData.difficulty}</span>
-                        {problemData.topicTags.slice(0, 3).map(t => <span key={t.name} className="topic-tag">{t.name}</span>)}
+                        <span className={`difficulty-badge ${(problemData.difficulty || '').toLowerCase()}`}>{problemData.difficulty}</span>
+                        {(problemData.topicTags || []).slice(0, 3).map(t => <span key={t.name} className="topic-tag">{t.name}</span>)}
                       </div>
                     </div>
                     <div className="solutions-problem-content"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problemData.content) }} />
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problemData.content || '') }} />
                   </div>
 
                   {/* Solution form on right */}
@@ -652,12 +665,12 @@ export default function MySolutionsTab({ showToast, user }) {
               {viewTab === 'problem' && viewingSolution.problemDetails && (
                 <div className="solutions-view-problem">
                   <div className="solutions-view-problem-topics">
-                    {viewingSolution.problemDetails.topicTags.map(t => (
+                    {(viewingSolution.problemDetails.topicTags || []).map(t => (
                       <span key={t.name} className="topic-tag">{t.name}</span>
                     ))}
                   </div>
                   <div className="solutions-view-problem-body"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content) }} />
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content || '') }} />
                 </div>
               )}
 

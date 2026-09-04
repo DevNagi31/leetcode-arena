@@ -47,7 +47,7 @@ Add friends, view their stats, and message them in real-time.
 
 ## Tech Stack
 
-- **Frontend:** React, Axios, Lucide Icons, Socket.io Client
+- **Frontend:** React 18, Vite, Axios, Lucide Icons, Socket.io Client
 - **Backend:** Express, MongoDB/Mongoose, JWT Auth, Socket.io
 - **Security:** Helmet, Rate Limiting, Input Validation (express-validator)
 
@@ -89,50 +89,224 @@ Add friends, view their stats, and message them in real-time.
    ```bash
    npm run dev
    ```
-   This starts both the React frontend (port 3000) and Express backend (port 5001) concurrently.
+   This starts the Vite dev server (port 3000) and the Express backend (port
+   5001) concurrently. Vite proxies `/api` and the Socket.io websocket to the
+   backend, so the browser only ever talks to port 3000.
+
+   If the backend runs on a different port, point the proxy at it:
+   ```bash
+   VITE_PROXY_TARGET=http://localhost:5055 npm start
+   ```
 
 ### Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Start React dev server |
-| `npm run server` | Start backend server |
+| `npm start` | Start the Vite dev server |
+| `npm run server` | Start the backend server |
 | `npm run dev` | Start both frontend and backend |
-| `npm run build` | Build for production |
+| `npm run build` | Build for production into `build/` |
+| `npm run preview` | Serve the production build locally |
+| `npm test` | Frontend tests (Vitest) |
 
 ## Project Structure
 
 ```
-├── public/                 # Static assets
+├── index.html              # Vite entry point
+├── vite.config.js          # Build, dev proxy and test config
+├── public/                 # Static assets served from the site root
 ├── server/
 │   ├── data/               # Static data (countries.json)
 │   ├── middleware/          # Auth, security, validation
 │   ├── models/             # Mongoose schemas
 │   ├── routes/             # API route handlers
+│   ├── scripts/            # One-off maintenance scripts
 │   ├── services/           # LeetCode & university APIs
+│   ├── utils/              # Tier and activity helpers
 │   └── server.js           # Express + Socket.io entry point
 ├── src/
-│   ├── components/         # React components
+│   ├── components/         # React components (.jsx)
 │   ├── styles/             # CSS
-│   └── App.js              # Main app with all views
+│   ├── utils/              # API client, constants, hooks
+│   └── App.jsx             # Main app with all views
 └── package.json
 ```
 
 ## API Routes
 
-| Route | Description |
-|-------|-------------|
-| `POST /api/auth/verify-leetcode` | Verify LeetCode username |
-| `POST /api/auth/register` | Register new user |
-| `POST /api/auth/login` | Login |
-| `GET /api/users/me` | Get current user |
-| `POST /api/users/refresh-stats` | Sync LeetCode stats |
-| `GET /api/leaderboard` | Get leaderboard (filterable) |
-| `GET /api/friends` | Friends list |
-| `GET/POST /api/snippets` | Code snippets CRUD |
-| `GET/POST /api/notes` | Notes CRUD |
-| `GET/POST /api/messages` | Chat messages |
-| `POST /api/leetcode/problem` | Fetch problem details |
+| Route | Auth | Description |
+|-------|------|-------------|
+| `GET /api/health` | – | Liveness + DB status |
+| `POST /api/auth/register` | – | Register (LeetCode stats are verified server-side) |
+| `POST /api/auth/login` | – | Login |
+| `POST /api/auth/logout` | ✓ | Blacklist the current token |
+| `POST /api/auth/forgot-password` | – | Email a 6-digit reset code |
+| `POST /api/auth/verify-reset-code` | – | Exchange the code for a reset token |
+| `POST /api/auth/reset-password` | – | Set a new password |
+| `POST /api/auth/verify-email` | ✓ | Confirm the signup code |
+| `POST /api/auth/resend-verification` | ✓ | Re-send the signup code |
+| `GET /api/users/me` | ✓ | Current user, ranks and tier |
+| `POST /api/users/refresh-stats` | ✓ | Re-sync from LeetCode |
+| `PUT /api/users/profile` | ✓ | Update institution / level / year |
+| `PUT /api/users/change-password` | ✓ | Change password |
+| `PUT /api/users/weekly-goal` | ✓ | Set the weekly target |
+| `GET /api/leaderboard` | – | Leaderboard (`country`, `institution`, `page`) |
+| `GET /api/leaderboard/countries` | – | Countries that have users |
+| `GET /api/leaderboard/institutions` | – | Institutions, optionally by country |
+| `GET /api/universities/search` | – | University autocomplete |
+| `GET /api/friends` | ✓ | Friends list |
+| `GET /api/friends/requests` | ✓ | Pending requests |
+| `POST /api/friends/send` | ✓ | Send a request by username |
+| `POST /api/friends/accept/:id` | ✓ | Accept a request |
+| `DELETE /api/friends/:id` | ✓ | Remove a friend |
+| `GET/POST/PUT/DELETE /api/snippets` | ✓ | Code snippets CRUD |
+| `GET/POST/PUT/DELETE /api/notes` | ✓ | Notes CRUD |
+| `GET /api/messages/:friendId` | ✓ | Message history |
+| `GET /api/messages/unread/count` | ✓ | Unread counts, keyed by sender id |
+| `POST /api/leetcode/problem` | ✓ | Fetch a problem by slug or number |
+| `GET /api/leetcode/solved` | ✓ | Recent accepted submissions |
+
+Real-time chat runs over Socket.io on the same origin, authenticated with the
+same JWT (`auth: { token }` on the connection).
+
+---
+
+## Deploying
+
+The app ships as a **single service**: Express serves the API *and* the compiled
+React build, so there is one URL, one origin, and no CORS to configure. The
+repo's `render.yaml` describes exactly that.
+
+### 1. Provision a database
+
+Create a free MongoDB Atlas cluster (Atlas → *Build a Database* → M0):
+
+1. **Database Access** → add a user with a password. Save the password.
+2. **Network Access** → add `0.0.0.0/0`. Render's outbound IPs are not static
+   on the free plan, so an allowlist of specific addresses will not work.
+3. **Connect** → *Drivers* → copy the `mongodb+srv://...` string and put your
+   real password in it. Append a database name, e.g. `/leetcode-arena`.
+
+### 2. Set up email delivery
+
+Verification and password-reset codes are emailed. Without SMTP the server
+still runs, but codes are only printed to its log — so **nobody can finish
+signing up**. Any SMTP provider works; a Gmail account with an
+[App Password](https://myaccount.google.com/apppasswords) is the quickest:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=you@gmail.com
+SMTP_PASS=your-16-char-app-password
+EMAIL_FROM=you@gmail.com
+```
+
+For real traffic use a transactional provider (Resend, SendGrid, Mailgun,
+Postmark) — Gmail will rate-limit you.
+
+### 3. Deploy to Render
+
+1. Push this repo to GitHub.
+2. Render → **New** → **Blueprint** → pick the repo. It reads `render.yaml`
+   and creates the service with the right build and start commands.
+3. Fill in the environment variables it marks as required:
+
+   | Variable | Value |
+   |----------|-------|
+   | `MONGODB_URI` | The Atlas connection string from step 1 |
+   | `JWT_SECRET` | A long random string — generate with `openssl rand -base64 48` |
+   | `CORS_ORIGIN` | Your Render URL, e.g. `https://code-manager.onrender.com` |
+   | `SMTP_*`, `EMAIL_FROM` | From step 2 |
+
+   `NODE_ENV=production` and `PORT` are set for you.
+
+4. Deploy. First build takes a few minutes. Check `https://<your-app>/api/health`
+   — it should return `{"status":"ok","db":"connected"}`.
+
+5. **If you are upgrading an existing deployment**, run the activity migration
+   once against the production database (see below). Fresh deployments can skip
+   this.
+
+`CORS_ORIGIN` is a comma-separated list; add every origin you serve from. Since
+the frontend is same-origin it mostly matters for the Socket.io handshake.
+
+**Free-plan caveat:** Render spins the service down after 15 minutes of
+inactivity, so the first request afterwards takes ~30–60s. Upgrade to a paid
+instance to avoid it.
+
+### Deploying elsewhere
+
+Nothing is Render-specific — any host that runs Node 18+ works:
+
+```bash
+npm install && cd server && npm install && cd ..
+npm run build
+NODE_ENV=production node server/server.js
+```
+
+Set the same environment variables. The server trusts one proxy hop
+(`trust proxy`) and redirects to HTTPS only when `x-forwarded-proto` says the
+request arrived over plain HTTP, so it works behind a TLS-terminating proxy and
+also runs directly for local testing.
+
+**Fly.io / Railway / a VPS:** identical — build, set the env vars, run the start
+command, and point a TLS-terminating proxy at `$PORT`.
+
+**Splitting the frontend onto a CDN** (Vercel/Netlify) is supported but not the
+default. Set `VITE_API_URL` to the API's origin before building, and add
+the static host's origin to `CORS_ORIGIN` on the API.
+
+### Migrating an existing database
+
+Daily activity used to live in an `activityDates` array embedded in each user
+document. It now has its own `activities` collection, so an existing database
+needs a one-time migration:
+
+```bash
+cd server
+MONGODB_URI="<your production URI>" node scripts/migrate-activity.js --dry-run  # report only
+MONGODB_URI="<your production URI>" node scripts/migrate-activity.js            # migrate
+```
+
+The script copies each embedded day into the new collection, merges any
+duplicate dates, creates the unique `(userId, date)` index, and only then drops
+the old array. It is safe to re-run — a second run reports zero users — so an
+interrupted migration can simply be run again.
+
+Deploy the new code *before* running it: the old code reads the embedded array
+and will not see the migrated rows.
+
+### Environment variables
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `MONGODB_URI` | yes | Mongo connection string |
+| `JWT_SECRET` | yes | Server refuses to start without it |
+| `CORS_ORIGIN` | prod | Comma-separated origins; defaults to `http://localhost:3000` |
+| `PORT` | no | Defaults to `5001`; hosts usually inject this |
+| `NODE_ENV` | prod | `production` enables the SPA, CSP and HTTPS redirect |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` | prod | Without these, codes only reach the server log |
+| `EMAIL_FROM` | prod | From address on outgoing mail |
+| `VITE_API_URL` | no | Only when the API is on a different origin; baked in at build time |
+| `VITE_PROXY_TARGET` | no | Dev only — where `npm start` proxies `/api`; defaults to `http://localhost:5001` |
+
+### Post-deploy checklist
+
+- [ ] `/api/health` reports `db: connected`
+- [ ] Sign up with a real LeetCode username — stats populate
+- [ ] The verification code actually arrives by email
+- [ ] Password reset delivers a code
+- [ ] Two accounts can add each other and chat in real time
+- [ ] The leaderboard lists users
+
+## Tests
+
+```bash
+npm test                  # frontend (Vitest + React Testing Library)
+cd server && npm test     # backend (Jest + Supertest)
+```
 
 ## License
 

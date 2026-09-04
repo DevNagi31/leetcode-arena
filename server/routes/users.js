@@ -5,117 +5,38 @@ const auth = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const { fetchLeetCodeStats } = require('../services/leetcode');
 const { calculateTier } = require('../utils/tier');
-
-// Helper: Calculate streaks
-const calculateStreaks = (activityDates) => {
-  if (!activityDates || activityDates.length === 0) {
-    return { currentStreak: 0, longestStreak: 0 };
-  }
-
-  // Sort dates ascending
-  const sortedDates = activityDates
-    .map(a => a.date)
-    .sort((a, b) => new Date(a) - new Date(b));
-
-  let currentStreak = 0;
-  let longestStreak = 0;
-  let tempStreak = 1;
-
-  // Calculate longest streak
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prev = new Date(sortedDates[i - 1]);
-    const curr = new Date(sortedDates[i]);
-    const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
-
-    if (Math.round(diffDays) === 1) {
-      tempStreak++;
-    } else {
-      longestStreak = Math.max(longestStreak, tempStreak);
-      tempStreak = 1;
-    }
-  }
-  longestStreak = Math.max(longestStreak, tempStreak);
-
-  // Calculate current streak (from today backwards)
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const lastDate = sortedDates[sortedDates.length - 1];
-
-  if (lastDate === today || lastDate === yesterday) {
-    currentStreak = 1;
-    for (let i = sortedDates.length - 2; i >= 0; i--) {
-      const curr = new Date(sortedDates[i + 1]);
-      const prev = new Date(sortedDates[i]);
-      const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) {
-        currentStreak++;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return { currentStreak, longestStreak };
-};
-
-// Helper: Update activity for today
-const updateActivityDate = (activityDates, newProblems, prevProblems, easy, medium, hard) => {
-  const today = new Date().toISOString().split('T')[0];
-  const existing = activityDates.find(a => a.date === today);
-  const diff = Math.max(0, newProblems - prevProblems);
-
-  if (existing) {
-    existing.problemsSolved += diff;
-    existing.easy = easy;
-    existing.medium = medium;
-    existing.hard = hard;
-  } else if (diff > 0 || newProblems > 0) {
-    activityDates.push({
-      date: today,
-      problemsSolved: diff > 0 ? diff : 1,
-      easy,
-      medium,
-      hard
-    });
-  }
-
-  return activityDates;
-};
-
-// Helper: Calculate weekly progress
-const calculateWeeklyProgress = (activityDates) => {
-  const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const weeklyProblems = activityDates
-    .filter(a => new Date(a.date) >= startOfWeek)
-    .reduce((sum, a) => sum + a.problemsSolved, 0);
-
-  return weeklyProblems;
-};
+const { validate, changePasswordValidation, profileValidation } = require('../middleware/validation');
+const activity = require('../utils/activity');
 
 // @route   GET /api/users/me
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
     // Calculate ranks
-    const [globalAbove, countryAbove, uniAbove] = await Promise.all([
+    const [globalAbove, countryAbove, uniAbove, activityDates, activeDaysCount] = await Promise.all([
       User.countDocuments({ score: { $gt: user.score } }),
       User.countDocuments({ country: user.country, score: { $gt: user.score } }),
-      User.countDocuments({ institutionName: user.institutionName, score: { $gt: user.score } })
+      User.countDocuments({ institutionName: user.institutionName, score: { $gt: user.score } }),
+      // A year is what the heatmap draws; older rows stay in the collection.
+      activity.getRecentActivity(user._id),
+      activity.countActiveDays(user._id)
     ]);
 
     res.json({
       ...user.toObject(),
+      activityDates,
+      activeDaysCount,
       rank: globalAbove + 1,
       countryRank: countryAbove + 1,
       universityRank: uniAbove + 1,
       tier: calculateTier(user.score)
     });
   } catch (error) {
+    console.error('Fetch profile error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -129,8 +50,14 @@ router.post('/refresh-stats', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Fetch fresh LeetCode data
-    const leetcodeData = await fetchLeetCodeStats(user.leetcodeUsername);
+    // Fetch fresh LeetCode data. A LeetCode outage or a renamed profile is a
+    // 502, not an internal error — the client shows cached stats either way.
+    let leetcodeData;
+    try {
+      leetcodeData = await fetchLeetCodeStats(user.leetcodeUsername);
+    } catch (lcErr) {
+      return res.status(502).json({ message: lcErr.message || 'Could not reach LeetCode' });
+    }
 
     // Store previous problems count
     const prevProblems = user.problems || 0;
@@ -143,23 +70,23 @@ router.post('/refresh-stats', auth, async (req, res) => {
     user.totalActiveDays = leetcodeData.totalActiveDays;
     user.ranking = leetcodeData.ranking;
 
-    // Update activity dates
-    user.activityDates = updateActivityDate(
-      user.activityDates || [],
-      leetcodeData.problems,
-      prevProblems,
-      leetcodeData.easy,
-      leetcodeData.medium,
-      leetcodeData.hard
-    );
+    // Record anything newly solved against today, then recompute the derived
+    // counters from the activity collection.
+    await activity.recordSolved(user._id, leetcodeData.problems - prevProblems, {
+      easy: leetcodeData.easy,
+      medium: leetcodeData.medium,
+      hard: leetcodeData.hard
+    });
 
-    // Calculate streaks
-    const { currentStreak, longestStreak } = calculateStreaks(user.activityDates);
+    const [activeDates, weeklyProgress] = await Promise.all([
+      activity.getActiveDates(user._id),
+      activity.getWeeklyProgress(user._id)
+    ]);
+
+    const { currentStreak, longestStreak } = activity.calculateStreaks(activeDates);
     user.currentStreak = currentStreak;
     user.longestStreak = longestStreak;
 
-    // Calculate weekly progress
-    const weeklyProgress = calculateWeeklyProgress(user.activityDates);
     user.weeklyGoal = {
       target: user.weeklyGoal?.target || 5,
       current: weeklyProgress,
@@ -174,10 +101,11 @@ router.post('/refresh-stats', auth, async (req, res) => {
     await user.save();
 
     // Calculate ranks
-    const [globalAbove, countryAbove, uniAbove] = await Promise.all([
+    const [globalAbove, countryAbove, uniAbove, activityDates] = await Promise.all([
       User.countDocuments({ score: { $gt: user.score } }),
       User.countDocuments({ country: user.country, score: { $gt: user.score } }),
-      User.countDocuments({ institutionName: user.institutionName, score: { $gt: user.score } })
+      User.countDocuments({ institutionName: user.institutionName, score: { $gt: user.score } }),
+      activity.getRecentActivity(user._id)
     ]);
 
     res.json({
@@ -204,7 +132,8 @@ router.post('/refresh-stats', auth, async (req, res) => {
         institutionName: user.institutionName,
         year: user.year,
         lastUpdated: user.lastUpdated,
-        activityDates: user.activityDates,
+        activityDates,
+        activeDaysCount: activeDates.length,
         weeklyGoal: user.weeklyGoal,
         emailReminders: user.emailReminders,
         tier: calculateTier(user.score)
@@ -217,28 +146,19 @@ router.post('/refresh-stats', auth, async (req, res) => {
 });
 
 // @route   PUT /api/users/profile
-router.put('/profile', auth, async (req, res) => {
+// Validation lives in profileValidation, which shares one EDUCATION_LEVELS list
+// with the User model. The list inlined here previously said 'Self-taught',
+// which the model's 'Self-Taught' enum then rejected with a 500 on save.
+router.put('/profile', auth, profileValidation, validate, async (req, res) => {
   try {
     const { institutionName, year, educationLevel } = req.body;
     const user = await User.findById(req.userId);
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Sanitize and validate inputs
-    if (institutionName) {
-      const sanitized = String(institutionName).trim().slice(0, 100);
-      if (sanitized.length < 2) return res.status(400).json({ message: 'Institution name too short' });
-      user.institutionName = sanitized;
-    }
-    if (year) {
-      const sanitized = String(year).trim().slice(0, 20);
-      user.year = sanitized;
-    }
-    if (educationLevel) {
-      const validLevels = ['High School', 'Undergraduate', 'Graduate', 'PhD', 'Self-taught', 'Bootcamp', 'Other'];
-      if (!validLevels.includes(educationLevel)) return res.status(400).json({ message: 'Invalid education level' });
-      user.educationLevel = educationLevel;
-    }
+    if (institutionName !== undefined) user.institutionName = institutionName.trim();
+    if (year !== undefined) user.year = year.trim();
+    if (educationLevel !== undefined) user.educationLevel = educationLevel;
 
     await user.save();
 
@@ -255,13 +175,9 @@ router.put('/profile', auth, async (req, res) => {
 });
 
 // @route   PUT /api/users/change-password
-router.put('/change-password', auth, async (req, res) => {
+router.put('/change-password', auth, changePasswordValidation, validate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ message: 'New password must be at least 8 characters' });
-    }
 
     const user = await User.findById(req.userId);
 
@@ -269,6 +185,10 @@ router.put('/change-password', auth, async (req, res) => {
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'New password must be different from the current one' });
+    }
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
@@ -294,7 +214,11 @@ router.put('/weekly-goal', auth, async (req, res) => {
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    user.weeklyGoal.target = target;
+    user.weeklyGoal = {
+      target,
+      current: user.weeklyGoal?.current || 0,
+      weekStart: user.weeklyGoal?.weekStart || new Date(),
+    };
     await user.save();
 
     res.json({ message: 'Weekly goal updated', weeklyGoal: user.weeklyGoal });
@@ -318,8 +242,11 @@ router.put('/email-reminders', auth, async (req, res) => {
 
     user.emailReminders = {
       enabled: !!enabled,
-      time: typeof time === 'string' ? time.slice(0, 10) : '09:00',
-      timezone: typeof timezone === 'string' ? timezone.slice(0, 50) : 'UTC'
+      time: typeof time === 'string' ? time.slice(0, 10) : (user.emailReminders?.time || '09:00'),
+      timezone: typeof timezone === 'string' ? timezone.slice(0, 50) : (user.emailReminders?.timezone || 'UTC'),
+      // Preserve delivery bookkeeping — rebuilding the object wiped it, which
+      // would let a reminder go out twice in the same day.
+      lastSent: user.emailReminders?.lastSent || null,
     };
     await user.save();
 

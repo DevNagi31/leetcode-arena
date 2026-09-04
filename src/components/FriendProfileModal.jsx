@@ -68,7 +68,7 @@ export default function FriendProfileModal({ friend, onClose, onMessage, onRemov
               <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Longest Streak</div>
             </div>
             <div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>{(friend.activityDates || []).length}</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>{friend.activeDaysCount ?? 0}</div>
               <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Active Days</div>
             </div>
           </div>

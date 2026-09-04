@@ -31,11 +31,17 @@ const io = socketIo(server, {
   }
 });
 
-// HTTPS redirect in production
+// HTTPS redirect in production.
+// Only act when the request actually arrived through a TLS-terminating proxy
+// (Render, Heroku, a load balancer — all of which set x-forwarded-proto).
+// Redirecting when the header is absent bounced direct/local connections to
+// an https URL nothing was listening on, which made `npm run production`
+// unusable locally and broke container health checks.
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
-    if (req.headers['x-forwarded-proto'] !== 'https') {
-      return res.redirect(301, `https://${req.hostname}${req.url}`);
+    const proto = req.headers['x-forwarded-proto'];
+    if (proto && proto.split(',')[0].trim() !== 'https') {
+      return res.redirect(301, `https://${req.hostname}${req.originalUrl}`);
     }
     next();
   });
@@ -43,7 +49,22 @@ if (process.env.NODE_ENV === 'production') {
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      // CRA emits a small inline runtime chunk; styles are inlined by the build.
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      mediaSrc: ["'self'", 'blob:'],   // hero.mp4
+      // Same-origin XHR + the Socket.io websocket upgrade.
+      connectSrc: ["'self'", ...ALLOWED_ORIGINS, 'ws:', 'wss:'],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  } : false,
   crossOriginEmbedderPolicy: false,
   hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
@@ -98,6 +119,12 @@ app.use('/api/notes', require('./routes/notes'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/leetcode', require('./routes/leetcode'));
 
+// Unknown API routes must 404 as JSON — otherwise the SPA catch-all below
+// answers them with index.html and clients see HTML where JSON was expected.
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'Not found' });
+});
+
 // Serve React app in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '..', 'build')));
@@ -146,13 +173,25 @@ setInterval(() => {
   }
 }, 30000);
 
-// Socket.io for real-time chat
-const onlineUsers = new Map();
+// Socket.io for real-time chat.
+// A user may have several tabs open, so track a SET of sockets per user —
+// keying by a single socket id made closing one tab mark them offline and
+// silently routed their messages to a dead socket.
+const onlineUsers = new Map(); // userId -> Set<socketId>
+
+const emitToUser = (targetUserId, event, payload) => {
+  const sockets = onlineUsers.get(targetUserId);
+  if (!sockets) return;
+  for (const sid of sockets) io.to(sid).emit(event, payload);
+};
 
 io.on('connection', (socket) => {
   const userId = socket.userId;
-  onlineUsers.set(userId, socket.id);
-  io.emit('user_status', { userId, online: true });
+  const sockets = onlineUsers.get(userId) || new Set();
+  const wasOffline = sockets.size === 0;
+  sockets.add(socket.id);
+  onlineUsers.set(userId, sockets);
+  if (wasOffline) io.emit('user_status', { userId, online: true });
 
   socket.on('send_message', async (data) => {
     try {
@@ -176,12 +215,9 @@ io.on('connection', (socket) => {
       const message = new Message({ from: userId, to, content: trimmed });
       await message.save();
 
-      const recipientSocketId = onlineUsers.get(to);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('receive_message', {
-          _id: message._id, from: userId, to, content: trimmed, createdAt: message.createdAt
-        });
-      }
+      emitToUser(to, 'receive_message', {
+        _id: message._id, from: userId, to, content: trimmed, createdAt: message.createdAt
+      });
 
       socket.emit('message_sent', {
         _id: message._id, from: userId, to, content: trimmed, createdAt: message.createdAt
@@ -192,22 +228,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing', (data) => {
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('user_typing', { from: userId });
-    }
+    if (data?.to) emitToUser(data.to, 'user_typing', { from: userId });
   });
 
   socket.on('stop_typing', (data) => {
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('user_stopped_typing', { from: userId });
-    }
+    if (data?.to) emitToUser(data.to, 'user_stopped_typing', { from: userId });
   });
 
   socket.on('disconnect', () => {
-    onlineUsers.delete(userId);
-    io.emit('user_status', { userId, online: false });
+    const remaining = onlineUsers.get(userId);
+    if (!remaining) return;
+    remaining.delete(socket.id);
+    if (remaining.size === 0) {
+      onlineUsers.delete(userId);
+      io.emit('user_status', { userId, online: false });
+    }
   });
 });
 
@@ -219,8 +254,22 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5001;
 
-server.listen(PORT, () => {
-  console.log('Server running on http://localhost:' + PORT);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log('Server running on http://localhost:' + PORT);
+  });
+
+  // Render (and most PaaS) send SIGTERM on deploy/shutdown. Close cleanly so
+  // in-flight requests finish and Mongo sockets aren't left dangling.
+  const shutdown = (signal) => {
+    console.log(`${signal} received, shutting down...`);
+    server.close(() => {
+      mongoose.connection.close(false).finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
 
 module.exports = app;

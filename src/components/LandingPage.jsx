@@ -274,7 +274,7 @@ export default function LandingPage({ onNavigate }) {
     <div className="landing-page" ref={rootRef}>
       <video
         className="hero-bg-video"
-        src={`${process.env.PUBLIC_URL}/hero.mp4`}
+        src="/hero.mp4"
         autoPlay
         loop
         muted

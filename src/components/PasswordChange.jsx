@@ -3,6 +3,12 @@ import { Lock, X } from 'lucide-react';
 import { checkPasswordStrength } from '../utils/constants';
 import './ProfileEdit.css';
 
+// Mirrors the backend rule. The strength score is a rough UX signal and does
+// not imply the server will accept the password — e.g. "Passwordd" scores 3
+// but has no digit, so gating on the score alone produced a server rejection.
+const PASSWORD_HINT = 'At least 8 characters, with an uppercase letter, a lowercase letter and a number';
+const isStrongPassword = (pw) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pw);
+
 const PasswordChange = ({ onSave, onCancel, showToast }) => {
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -26,8 +32,13 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
       return;
     }
 
-    if (passwordStrength.score < 3) {
-      showToast('Password is too weak', 'error');
+    if (!isStrongPassword(formData.newPassword)) {
+      showToast(PASSWORD_HINT, 'error');
+      return;
+    }
+
+    if (formData.currentPassword === formData.newPassword) {
+      showToast('New password must be different from the current one', 'error');
       return;
     }
 
@@ -79,6 +90,9 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
                 <div style={{ height: '3px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
                   <div style={{ height: '100%', width: `${passwordStrength.score * 20}%`, background: 'var(--text-primary)', transition: 'all 0.3s' }}></div>
                 </div>
+                <p style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                  {PASSWORD_HINT}
+                </p>
               </div>
             )}
           </div>
@@ -95,7 +109,7 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
           </div>
 
           <div className="modal-actions">
-            <button type="submit" className="pixel-button primary" disabled={saving || passwordStrength.score < 3}>
+            <button type="submit" className="pixel-button primary" disabled={saving || !isStrongPassword(formData.newPassword)}>
               <Lock size={16} strokeWidth={2} />
               {saving ? 'CHANGING...' : 'CHANGE'}
             </button>
