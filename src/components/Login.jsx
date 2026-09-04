@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-
-const API_URL = '';
+import { API_URL } from '../utils/api';
 
 const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -12,7 +11,7 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, formData);
+      const response = await axios.post(`${API_URL}/auth/login`, formData);
       
       localStorage.setItem('token', response.data.token);
       setToken(response.data.token);

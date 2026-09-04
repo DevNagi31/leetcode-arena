@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { User, Users, UserPlus, Search, Flame, MessageCircle } from 'lucide-react';
+import { authGet, authPost, authDelete } from '../utils/api';
 import { FriendCardSkeleton } from './LoadingSkeleton';
 import FriendProfileModal from './FriendProfileModal';
 import ChatModal from './ChatModal';
@@ -17,30 +17,28 @@ export default function FriendsTab({ currentUser, showToast }) {
   const [chatFriend, setChatFriend] = useState(null);
   const [unreadCounts, setUnreadCounts] = useState({});
 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchFriends = async () => {
     try {
-      const r = await axios.get('/api/friends', { headers });
-      setFriends(r.data);
+      const r = await authGet('/friends');
+      setFriends(Array.isArray(r.data) ? r.data : []);
     } catch (e) { /* silently fail */ }
     finally { setLoading(false); }
   };
 
   const fetchRequests = async () => {
     try {
-      const r = await axios.get('/api/friends/requests', { headers });
-      setRequests(r.data);
+      const r = await authGet('/friends/requests');
+      setRequests(Array.isArray(r.data) ? r.data : []);
     } catch (e) { /* silently fail */ }
   };
 
   const fetchUnreadCounts = async () => {
     try {
-      const r = await axios.get('/api/messages/unread/count', { headers });
-      const counts = {};
-      (r.data || []).forEach(item => { counts[item._id] = item.count; });
-      setUnreadCounts(counts);
+      // The endpoint returns an object keyed by sender id ({ "<id>": 3 }).
+      // This used to call .forEach on it as if it were an array, which threw
+      // and was swallowed — so unread badges never appeared at all.
+      const r = await authGet('/messages/unread/count');
+      setUnreadCounts(r.data && typeof r.data === 'object' ? r.data : {});
     } catch (e) { /* silently fail */ }
   };
 
@@ -56,7 +54,7 @@ export default function FriendsTab({ currentUser, showToast }) {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const r = await axios.get(`/api/friends/search/${searchQuery}`, { headers });
+      const r = await authGet(`/friends/search/${encodeURIComponent(searchQuery.trim())}`);
       setSearchResults(r.data);
     } catch (e) { showToast('Search failed', 'error'); }
     finally { setSearching(false); }
@@ -64,7 +62,7 @@ export default function FriendsTab({ currentUser, showToast }) {
 
   const handleSendRequest = async (username) => {
     try {
-      await axios.post('/api/friends/send', { username }, { headers });
+      await authPost('/friends/send', { username });
       showToast(`Friend request sent to ${username}!`, 'success');
       setSearchResults(prev => prev.filter(u => u.username !== username));
     } catch (e) { showToast(e.response?.data?.message || 'Failed to send request', 'error'); }
@@ -72,7 +70,7 @@ export default function FriendsTab({ currentUser, showToast }) {
 
   const handleAccept = async (requestId) => {
     try {
-      await axios.post(`/api/friends/accept/${requestId}`, {}, { headers });
+      await authPost(`/friends/accept/${requestId}`);
       showToast('Friend request accepted!', 'success');
       fetchFriends();
       fetchRequests();
@@ -81,7 +79,7 @@ export default function FriendsTab({ currentUser, showToast }) {
 
   const handleDecline = async (requestId) => {
     try {
-      await axios.post(`/api/friends/decline/${requestId}`, {}, { headers });
+      await authPost(`/friends/decline/${requestId}`);
       showToast('Request declined', 'info');
       fetchRequests();
     } catch (e) { showToast('Failed to decline request', 'error'); }
@@ -89,8 +87,9 @@ export default function FriendsTab({ currentUser, showToast }) {
 
   const handleRemoveFriend = async (friendId) => {
     try {
-      await axios.delete(`/api/friends/${friendId}`, { headers });
+      await authDelete(`/friends/${friendId}`);
       showToast('Friend removed', 'info');
+      setUnreadCounts(prev => { const next = { ...prev }; delete next[friendId]; return next; });
       fetchFriends();
     } catch (e) { showToast('Failed to remove friend', 'error'); }
   };

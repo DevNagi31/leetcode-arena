@@ -2,6 +2,22 @@ const { body, param, validationResult } = require('express-validator');
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 
+// Must stay in sync with the `educationLevel` enum on the User model and with
+// EDUCATION_LEVELS in src/utils/constants.js.
+const EDUCATION_LEVELS = [
+  'High School', 'Undergraduate', 'Graduate', 'PhD', 'Bootcamp', 'Self-Taught', 'Other',
+];
+
+// One shared definition of "a strong enough password", used by registration,
+// password reset and the change-password route so they can't drift apart.
+const strongPassword = (field) =>
+  body(field)
+    .isString()
+    .isLength({ min: 8, max: 128 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+
 // Reusable: a Mongo ObjectId in the route params
 const objectIdParam = [
   param('id')
@@ -39,19 +55,22 @@ const registerValidation = [
     .normalizeEmail()
     .withMessage('Must be a valid email'),
   
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  strongPassword('password'),
   
   body('leetcodeUsername')
     .trim()
     .notEmpty()
-    .withMessage('LeetCode username is required'),
+    .withMessage('LeetCode username is required')
+    .isLength({ max: 40 })
+    .withMessage('LeetCode username is too long'),
+
+  body('country')
+    .trim()
+    .isLength({ min: 2, max: 60 })
+    .withMessage('Country is required'),
   
   body('educationLevel')
-    .notEmpty()
+    .isIn(EDUCATION_LEVELS)
     .withMessage('Education level is required'),
   
   body('institutionName')
@@ -104,12 +123,31 @@ const resetPasswordValidation = [
     .isString()
     .notEmpty()
     .withMessage('Reset token is required'),
-  body('newPassword')
+  strongPassword('newPassword'),
+];
+
+// Changing a password from inside the app: current password must be supplied
+// and the new one must clear the same bar as registration.
+const changePasswordValidation = [
+  body('currentPassword')
+    // bail so a missing field reports "required" rather than express-validator's
+    // generic "Invalid value" from the isString check.
+    .exists({ checkFalsy: true })
+    .withMessage('Current password is required')
+    .bail()
     .isString()
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage('Current password is required'),
+  strongPassword('newPassword'),
+];
+
+// Profile edit — every field optional, but validated when present.
+const profileValidation = [
+  body('institutionName').optional().isString().trim().isLength({ min: 2, max: 100 })
+    .withMessage('Institution name must be 2-100 characters'),
+  body('year').optional().isString().trim().isLength({ min: 1, max: 20 })
+    .withMessage('Year must be 1-20 characters'),
+  body('educationLevel').optional().isIn(EDUCATION_LEVELS)
+    .withMessage('Invalid education level'),
 ];
 
 // Email verification code (6 digits)
@@ -162,6 +200,7 @@ const noteValidation = ({ optional = false } = {}) => {
 };
 
 module.exports = {
+  EDUCATION_LEVELS,
   validate,
   objectIdParam,
   registerValidation,
@@ -169,6 +208,8 @@ module.exports = {
   forgotPasswordValidation,
   verifyResetCodeValidation,
   resetPasswordValidation,
+  changePasswordValidation,
+  profileValidation,
   verifyEmailValidation,
   snippetValidation,
   noteValidation

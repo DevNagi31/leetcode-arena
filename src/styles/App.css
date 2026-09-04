@@ -1306,7 +1306,8 @@ h1, h2, h3, h4,
 
 .table-header {
   display: grid;
-  grid-template-columns: 80px 1fr 250px 100px 100px 100px 100px;
+  /* 6 columns: rank, tier, user, country/streak, problems, score */
+  grid-template-columns: 70px 50px 1fr 120px 100px 100px;
   gap: 16px;
   padding: 20px 24px;
   background: var(--bg-secondary);
@@ -1319,7 +1320,7 @@ h1, h2, h3, h4,
 
 .table-row {
   display: grid;
-  grid-template-columns: 80px 1fr 250px 100px 100px 100px 100px;
+  grid-template-columns: 70px 50px 1fr 120px 100px 100px;
   gap: 16px;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
@@ -1434,12 +1435,6 @@ h1, h2, h3, h4,
     grid-template-columns: 1fr;
   }
 
-  .table-header,
-  .table-row {
-    grid-template-columns: 60px 1fr 100px 70px 70px 70px 70px;
-    font-size: 11px;
-    padding: 16px;
-  }
 }
 
 /* Scrollbar */
@@ -4104,5 +4099,280 @@ h1, h2, h3, h4,
 
   .podium-score {
     font-size: 20px;
+  }
+}
+
+/* ===================================================================
+   RESPONSIVE PASS
+   Layered on top of the existing breakpoints rather than replacing
+   them. Order matters: this block is last, so it wins ties.
+   =================================================================== */
+
+/* --- Dynamic viewport height -------------------------------------
+   Mobile browsers grow and shrink the visible area as their toolbars
+   hide, so 100vh overflows by the toolbar's height and full-height
+   panels (the hero, the fullscreen chat) get their bottom edge cut
+   off. dvh tracks the real area; the vh line stays as the fallback
+   for browsers without it. */
+.game-container { min-height: 100vh; }
+.loading-screen { height: 100vh; }
+
+@supports (height: 100dvh) {
+  .game-container { min-height: 100dvh; }
+  .loading-screen { height: 100dvh; }
+  .hero-section { min-height: 100dvh; }
+  .acc-sticky { height: 100dvh; }
+
+  @media (max-width: 768px) {
+    .chat-modal {
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+    }
+    .modal-content.modal-large,
+    .solutions-modal,
+    .solutions-view-modal {
+      max-height: 100dvh !important;
+    }
+  }
+}
+
+/* --- No element may push the page sideways ------------------------ */
+img,
+video,
+svg,
+pre,
+table {
+  max-width: 100%;
+}
+
+/* Long code, problem statements and pasted URLs are the usual culprits
+   behind horizontal page scroll — let each scroll inside its own box. */
+.solutions-code-preview,
+.solutions-view-code,
+.solutions-problem-content,
+.solutions-view-problem-body {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.solutions-card-title,
+.solutions-view-title,
+.friend-name,
+.note-content {
+  overflow-wrap: anywhere;
+}
+
+/* The heatmap is intentionally wider than a phone; scroll it, don't
+   squash it. */
+.custom-heatmap .heatmap-inner {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- Tablet / small laptop (769px - 1024px) -----------------------
+   The only range with no coverage before: three accumulation cards
+   sharing ~900px left each one about 280px wide with a heatmap and a
+   podium inside. Two-up wraps instead. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .acc-row {
+    flex-wrap: wrap;
+  }
+
+  .acc-card {
+    flex: 1 1 45%;
+    min-width: 280px;
+  }
+
+  .acc-title { font-size: 38px; }
+
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .analytics-two-col { grid-template-columns: 1fr; }
+
+  .solutions-edit-layout { grid-template-columns: 1fr; }
+
+  .leaderboard-table .table-header,
+  .leaderboard-table .table-row {
+    grid-template-columns: 60px 46px 1fr 90px 80px 80px;
+    gap: 10px;
+    padding: 16px 14px;
+  }
+}
+
+/* --- Phone (<= 768px) --------------------------------------------- */
+@media (max-width: 768px) {
+  /* The tab strip scrolls horizontally; keep the buttons from being
+     squeezed to nothing and hide the scrollbar track. */
+  .dashboard-tabs {
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .dashboard-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-tabs .tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Friends: the action buttons wrapped under a stretched info block
+     and ended up misaligned. Give the row an explicit stacking order. */
+  .friend-card {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .friend-info {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .friend-stats {
+    flex-wrap: wrap;
+  }
+
+  /* Landing stats: three gradient numbers side by side don't fit. */
+  .stats-card {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .lp-stat-label { font-size: 11px; }
+
+  /* Modals become full-bleed sheets, so their own scroll container
+     needs a floor or the footer buttons sit off-screen. */
+  .modal-overlay {
+    align-items: stretch;
+  }
+
+  .solutions-modal-body,
+  .solutions-view-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Touch targets: 44px is the accessibility floor for a tap. */
+  .pixel-button,
+  .tab-btn,
+  .tab-button,
+  .solutions-subtab {
+    min-height: 44px;
+  }
+
+  /* iOS zooms the page in when a focused input's text is under 16px.
+     Set the field text to exactly 16px so it never triggers. */
+  .pixel-input,
+  .chat-input,
+  .search-input,
+  .solutions-filter-select,
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Keep the composer above the on-screen keyboard / home indicator. */
+  .chat-input-form {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+/* --- Small phone (<= 480px) --------------------------------------- */
+@media (max-width: 480px) {
+  .stats-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .lp-stat-num { font-size: 30px; }
+
+  .dashboard-header {
+    flex-direction: column;
+  }
+
+  .user-info {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  /* Week strip: 7 columns of 36px circles overflow a 360px screen. */
+  .week-day-circle {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .week-grid { gap: 4px; }
+
+  .week-day-name,
+  .week-day-count { font-size: 10px; }
+
+  .podium { gap: 10px; }
+
+  .friend-card .pixel-button {
+    padding: 8px 10px;
+  }
+
+  .solutions-header,
+  .solutions-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .pixel-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* --- Respect reduced-motion --------------------------------------
+   The landing page animates on scroll and the cursor glow tracks the
+   pointer; both are decorative. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .lp-section .lp-card,
+  .lp-section .cta-inner,
+  .acc-card {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .hero-bg-video { display: none; }
+}
+
+/* --- Coarse pointers ---------------------------------------------
+   Hover-driven flourishes are dead weight on touch devices, and the
+   cursor "eraser" leaves the overlay stuck wherever it was last
+   painted. */
+@media (hover: none) {
+  .table-row:hover { transform: none; }
+  .podium-place:hover { transform: none; }
+
+  .hero-bg-overlay {
+    -webkit-mask: none;
+    mask: none;
+  }
+
+  .cursor-glow,
+  .app-cursor-glow {
+    display: none;
   }
 }

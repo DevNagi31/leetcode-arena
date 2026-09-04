@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import Toast from './components/Toast';
 import Login from './components/Login';
@@ -57,12 +57,28 @@ function App() {
   const [transitioning, setTransitioning] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [dark, setDark] = useDarkMode();
+  const toastSeq = useRef(0);
 
-  const showToast = (message, type = 'success') => {
-    const id = Date.now();
+  // showToast is passed into effect dependency lists further down the tree
+  // (Leaderboard, for one). Recreating it on every render made those effects
+  // re-run on every toast, which could loop: fetch -> error toast -> re-render
+  // -> fetch. useCallback pins the identity.
+  const showToast = useCallback((message, type = 'success') => {
+    // Date.now() collides when two toasts fire in the same millisecond, and
+    // React then warns about duplicate keys.
+    const id = `${Date.now()}-${toastSeq.current++}`;
     setToasts(prev => [...prev, { id, message, type }]);
-  };
-  const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+  const removeToast = useCallback(
+    (id) => setToasts(prev => prev.filter(t => t.id !== id)),
+    []
+  );
+
+  const changeView = useCallback((newView) => {
+    setTransitioning(true);
+    localStorage.setItem('currentView', newView);
+    setTimeout(() => { setView(newView); setError(''); setTransitioning(false); }, 300);
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -90,15 +106,9 @@ function App() {
       setLoading(false);
     };
     initializeApp();
-  }, [token]);
+  }, [token, changeView]);
 
-  const changeView = (newView) => {
-    setTransitioning(true);
-    localStorage.setItem('currentView', newView);
-    setTimeout(() => { setView(newView); setError(''); setTransitioning(false); }, 300);
-  };
-
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await axios.post(`${API_URL}/auth/logout`, {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -110,7 +120,7 @@ function App() {
     setCurrentUser(null);
     changeView('landing');
     showToast('Logged out successfully', 'info');
-  };
+  }, [token, changeView, showToast]);
 
   if (loading) return <LoadingScreen />;
 

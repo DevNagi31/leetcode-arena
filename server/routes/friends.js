@@ -2,16 +2,32 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const FriendRequest = require('../models/FriendRequest');
+const mongoose = require('mongoose');
 const auth = require('../middleware/auth');
 const { calculateTier } = require('../utils/tier');
+const activity = require('../utils/activity');
 
 // @route GET /api/friends
 // @desc Get my friends list
 router.get('/', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId)
-      .populate('friends', 'username leetcodeUsername problems easy medium hard score country institutionName currentStreak activityDates');
-    res.json(user.friends || []);
+      .populate('friends', 'username leetcodeUsername problems easy medium hard score country institutionName currentStreak longestStreak');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const friends = user.friends || [];
+
+    // The friend profile card shows a seven-day strip and a total active-day
+    // count. Fetch exactly that, in two batched queries, rather than
+    // populating every friend's entire activity history as this route used to.
+    const ids = friends.map(f => f._id);
+    const { byUser, counts } = await activity.getWeekActivityForUsers(ids);
+
+    res.json(friends.map(f => ({
+      ...f.toObject(),
+      activityDates: byUser[f._id.toString()] || [],
+      activeDaysCount: counts[f._id.toString()] || 0,
+    })));
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -68,8 +84,12 @@ router.post('/send', auth, async (req, res) => {
   try {
     const { username } = req.body;
 
+    if (typeof username !== 'string' || !username.trim()) {
+      return res.status(400).json({ message: 'A username is required' });
+    }
+
     // Find target user
-    const targetUser = await User.findOne({ username });
+    const targetUser = await User.findOne({ username: username.trim() });
     if (!targetUser) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -81,7 +101,8 @@ router.post('/send', auth, async (req, res) => {
 
     // Check if already friends
     const currentUser = await User.findById(req.userId);
-    if (currentUser.friends.includes(targetUser._id)) {
+    if (!currentUser) return res.status(404).json({ message: 'User not found' });
+    if (currentUser.friends.some(f => f.equals(targetUser._id))) {
       return res.status(400).json({ message: 'Already friends' });
     }
 
@@ -116,6 +137,9 @@ router.post('/send', auth, async (req, res) => {
 // @desc Accept friend request
 router.post('/accept/:requestId', auth, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+      return res.status(400).json({ message: 'Invalid request id' });
+    }
     const request = await FriendRequest.findById(req.params.requestId);
 
     if (!request) {
@@ -126,20 +150,37 @@ router.post('/accept/:requestId', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Update request status
-    request.status = 'accepted';
-    await request.save();
-
-    // Add each other as friends
+    // A friendship is two writes, one on each side. If the second fails the
+    // pair is left in a half-linked state that neither of them can repair
+    // through the UI: one sees a friend, the other doesn't, and re-sending a
+    // request is blocked by the "already friends" check.
+    //
+    // A transaction would be the tidier fix, but it needs a replica set and
+    // the README has people running a standalone mongod locally. Undoing the
+    // first write instead is correct on every deployment.
     await User.findByIdAndUpdate(req.userId, {
       $addToSet: { friends: request.from }
     });
-    await User.findByIdAndUpdate(request.from, {
-      $addToSet: { friends: req.userId }
-    });
+
+    try {
+      await User.findByIdAndUpdate(request.from, {
+        $addToSet: { friends: req.userId }
+      });
+    } catch (linkErr) {
+      await User.findByIdAndUpdate(req.userId, {
+        $pull: { friends: request.from }
+      }).catch(() => { /* best effort — the error below is the one to report */ });
+      throw linkErr;
+    }
+
+    // Only mark the request accepted once both sides are linked, so a failure
+    // leaves it pending and retryable.
+    request.status = 'accepted';
+    await request.save();
 
     res.json({ message: 'Friend request accepted!' });
   } catch (error) {
+    console.error('Accept friend request error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -148,6 +189,9 @@ router.post('/accept/:requestId', auth, async (req, res) => {
 // @desc Decline friend request
 router.post('/decline/:requestId', auth, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+      return res.status(400).json({ message: 'Invalid request id' });
+    }
     const request = await FriendRequest.findById(req.params.requestId);
 
     if (!request) {
@@ -171,11 +215,23 @@ router.post('/decline/:requestId', auth, async (req, res) => {
 // @desc Remove friend
 router.delete('/:friendId', auth, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.friendId)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
     await User.findByIdAndUpdate(req.userId, {
       $pull: { friends: req.params.friendId }
     });
     await User.findByIdAndUpdate(req.params.friendId, {
       $pull: { friends: req.userId }
+    });
+
+    // Clear the request history too, otherwise the pair can never re-add
+    // each other.
+    await FriendRequest.deleteMany({
+      $or: [
+        { from: req.userId, to: req.params.friendId },
+        { from: req.params.friendId, to: req.userId },
+      ],
     });
 
     res.json({ message: 'Friend removed' });
@@ -188,7 +244,9 @@ router.delete('/:friendId', auth, async (req, res) => {
 // @desc Search users by username
 router.get('/search/:username', auth, async (req, res) => {
   try {
-    const escaped = req.params.username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const raw = (req.params.username || '').trim().slice(0, 40);
+    if (raw.length < 2) return res.json([]);
+    const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const users = await User.find({
       username: { $regex: escaped, $options: 'i' },
       _id: { $ne: req.userId }

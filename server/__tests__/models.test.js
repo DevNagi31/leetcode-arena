@@ -23,11 +23,15 @@ describe('User model schema', () => {
     expect(schema.score).toBeDefined();
   });
 
-  test('has streak and activity fields', () => {
+  test('has streak fields', () => {
     const schema = User.schema.obj;
     expect(schema.currentStreak).toBeDefined();
     expect(schema.longestStreak).toBeDefined();
-    expect(schema.activityDates).toBeDefined();
+  });
+
+  test('no longer embeds the unbounded activity array', () => {
+    // Activity moved to its own collection; see models/Activity.js.
+    expect(User.schema.obj.activityDates).toBeUndefined();
   });
 
   test('has password reset fields', () => {

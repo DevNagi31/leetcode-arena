@@ -22,6 +22,12 @@ const {
 // Generate a 6-digit numeric code as a string.
 const generateCode = () => crypto.randomInt(100000, 999999).toString();
 
+// Constant-time comparison for short secrets (reset / verification codes).
+const timingSafeEqualStr = (a, b) => {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+};
+
 // Register
 router.post('/register', authLimiter, registerValidation, validate, async (req, res) => {
   try {
@@ -121,6 +127,21 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
       }
     });
   } catch (error) {
+    // Two concurrent signups can both clear the existence check above; the
+    // unique index then rejects the loser. Report that as a 400, not a 500.
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      const messages = {
+        email: 'Email already registered. Please login instead.',
+        username: 'Username already taken. Please choose another.',
+        leetcodeUsername: 'This LeetCode account is already linked to another user.',
+      };
+      return res.status(400).json({ message: messages[field] || 'Account already exists' });
+    }
+    if (error.name === 'ValidationError') {
+      const first = Object.values(error.errors)[0];
+      return res.status(400).json({ message: first?.message || 'Invalid registration details' });
+    }
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Registration failed' });
   }
@@ -176,7 +197,13 @@ router.post('/login', authLimiter, loginValidation, validate, async (req, res) =
 router.post('/logout', auth, async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    await new TokenBlacklist({ token }).save();
+    // Upsert: logging out twice with the same token must not 500 on the
+    // unique index.
+    await TokenBlacklist.updateOne(
+      { token },
+      { $setOnInsert: { token, createdAt: new Date() } },
+      { upsert: true }
+    );
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
@@ -229,7 +256,7 @@ router.post('/verify-reset-code', authLimiter, verifyResetCodeValidation, valida
       return res.status(400).json({ message: 'Invalid or expired reset code' });
     }
 
-    if (user.resetCode !== code) {
+    if (!timingSafeEqualStr(user.resetCode, code)) {
       return res.status(400).json({ message: 'Invalid or expired reset code' });
     }
 
@@ -314,7 +341,7 @@ router.post('/verify-email', auth, verifyEmailValidation, validate, async (req, 
       return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
     }
 
-    if (user.verificationCode !== code) {
+    if (!timingSafeEqualStr(user.verificationCode, code)) {
       return res.status(400).json({ message: 'Invalid verification code' });
     }
 

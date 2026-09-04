@@ -25,14 +25,9 @@ const UserSchema = new mongoose.Schema({
   // Friends
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
-  // Activity Tracking
-  activityDates: [{
-    date: { type: String, required: true },
-    problemsSolved: { type: Number, default: 0 },
-    easy: { type: Number, default: 0 },
-    medium: { type: Number, default: 0 },
-    hard: { type: Number, default: 0 }
-  }],
+  // Activity tracking lives in the separate `activities` collection — see
+  // models/Activity.js for why. Run scripts/migrate-activity.js to move data
+  // out of the old embedded `activityDates` array.
 
   // Weekly Goal
   weeklyGoal: {

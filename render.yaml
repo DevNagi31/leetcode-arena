@@ -5,6 +5,8 @@ services:
     plan: free
     buildCommand: npm install && cd server && npm install && cd .. && npm run build
     startCommand: NODE_ENV=production node server/server.js
+    # Render restarts the service if this stops returning 2xx.
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production

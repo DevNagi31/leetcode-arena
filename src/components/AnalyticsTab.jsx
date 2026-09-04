@@ -27,7 +27,8 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
 
     // Total submissions from activity
     const totalSubmissions = activityDates.reduce((s, a) => s + a.problemsSolved, 0);
-    const totalActiveDays = activityDates.length;
+    // activityDates is the last year; activeDaysCount is lifetime.
+    const totalActiveDays = user.activeDaysCount ?? activityDates.length;
 
     // --- This Week ---
     const startOfWeek = new Date(now);

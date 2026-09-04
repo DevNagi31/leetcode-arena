@@ -10,6 +10,14 @@ router.post('/problem', auth, async (req, res) => {
   try {
     let { titleSlug } = req.body;
 
+    if (typeof titleSlug !== 'string' || !titleSlug.trim()) {
+      return res.status(400).json({ message: 'A problem slug or number is required' });
+    }
+    titleSlug = titleSlug.trim().toLowerCase();
+    if (!/^[a-z0-9-]{1,120}$/.test(titleSlug)) {
+      return res.status(400).json({ message: 'Invalid problem slug' });
+    }
+
     // If it's a number, we need to fetch by questionFrontendId
     const isNumber = /^\d+$/.test(titleSlug);
     
@@ -56,17 +64,23 @@ router.post('/problem', auth, async (req, res) => {
     const response = await axios.post('https://leetcode.com/graphql', {
       query,
       variables
+    }, {
+      headers: { 'Content-Type': 'application/json', 'Referer': 'https://leetcode.com' },
+      timeout: 10000
     });
 
     if (response.data.errors) {
       return res.status(404).json({ message: 'Problem not found' });
     }
 
-    const problemData = isNumber ? response.data.data.questionByFrontendId : response.data.data.question;
+    const problemData = isNumber ? response.data.data?.questionByFrontendId : response.data.data?.question;
+    if (!problemData) {
+      return res.status(404).json({ message: 'Problem not found' });
+    }
     res.json(problemData);
   } catch (error) {
-    console.error('LeetCode API error:', error);
-    res.status(500).json({ message: 'Failed to fetch problem' });
+    console.error('LeetCode API error:', error.message);
+    res.status(502).json({ message: 'Could not reach LeetCode. Please try again.' });
   }
 });
 
