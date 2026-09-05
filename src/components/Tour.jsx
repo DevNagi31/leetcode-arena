@@ -24,11 +24,14 @@ export default function Tour({ steps, onClose }) {
   const step = steps[index];
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX;
 
-  const finish = useCallback(() => onClose(), [onClose]);
+  // 'completed'  — reached the end, or dismissed on purpose
+  // 'unavailable' — nothing left to point at; don't burn the user's one
+  //                 showing on a tour they never actually saw
+  const finish = useCallback((reason = 'completed') => onClose(reason), [onClose]);
 
-  const goTo = useCallback((next) => {
+  const goTo = useCallback((next, reason = 'completed') => {
     if (next < 0) return;
-    if (next >= steps.length) return finish();
+    if (next >= steps.length) return finish(reason);
     setIndex(next);
   }, [steps.length, finish]);
 
@@ -42,8 +45,10 @@ export default function Tour({ steps, onClose }) {
       const el = document.querySelector(step.selector);
       if (!el) {
         // Nothing to point at — don't render an empty box, just move on.
+        // If every remaining step is missing the tour ends as 'unavailable',
+        // so it can be shown again rather than being marked as seen.
         setRect(null);
-        goTo(index + 1);
+        goTo(index + 1, 'unavailable');
         return;
       }
       const r = el.getBoundingClientRect();
@@ -96,7 +101,7 @@ export default function Tour({ steps, onClose }) {
   return (
     <div className="tour-root" role="dialog" aria-modal="true" aria-label={`Walkthrough step ${index + 1} of ${steps.length}`}>
       {/* Swallows clicks so the app underneath can't be operated mid-tour. */}
-      <div className="tour-overlay" onClick={finish} />
+      <div className="tour-overlay" onClick={() => finish()} />
 
       <div
         className="tour-spotlight"
@@ -113,7 +118,7 @@ export default function Tour({ steps, onClose }) {
         className={`tour-tip ${isMobile ? 'tour-tip-docked' : ''}`}
         style={isMobile ? undefined : { top: tipPos?.top ?? 0, left: tipPos?.left ?? 0 }}
       >
-        <button className="tour-close" onClick={finish} aria-label="Close walkthrough">
+        <button className="tour-close" onClick={() => finish()} aria-label="Close walkthrough">
           <X size={15} />
         </button>
 
@@ -140,7 +145,7 @@ export default function Tour({ steps, onClose }) {
         </div>
 
         {!isLast && (
-          <button className="tour-skip" onClick={finish}>Skip walkthrough</button>
+          <button className="tour-skip" onClick={() => finish()}>Skip walkthrough</button>
         )}
       </div>
     </div>
