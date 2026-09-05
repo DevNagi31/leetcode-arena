@@ -87,9 +87,9 @@ const PODIUM = [
 
 /* ---- Horizontal scroll-accumulation feature section ----
    A 300vh section with a sticky stage. As you scroll, cards slide in from the
-   right and accumulate side by side; earlier cards scale down a touch. The
-   scroll handler replicates Framer Motion's useScroll + useTransform by mapping
-   the section's scroll progress (0→1) onto each card's opacity / x / blur / scale. */
+   right and accumulate side by side, all at the same size. The scroll handler
+   replicates Framer Motion's useScroll + useTransform by mapping the section's
+   scroll progress (0→1) onto each card's opacity / x / y / blur. */
 const ACC_FEATURES = [
   {
     id: 1, eyebrow: 'TRACK PROGRESS', Icon: Activity, title: 'Track Progress',
@@ -144,19 +144,16 @@ function AccumulateFeatures() {
         const start = DETAILS_END + i * seg;
         const end = start + seg * 0.72;
         const t = easeInOut(clamp((p - start) / (end - start), 0, 1));
-        // shrink slightly once the NEXT card begins entering
-        const nextStart = DETAILS_END + (i + 1) * seg;
-        const nextEnd = nextStart + seg * 0.72;
-        const nt = easeInOut(clamp((p - nextStart) / (nextEnd - nextStart), 0, 1));
-        const hasNext = i < N - 1;
 
         const y = (1 - t) * 80;                 // rise up into place
         const x = i === 0 ? 0 : (1 - t) * 90;   // later cards also slide in from the right
         const blur = (1 - t) * 10;
-        const scale = hasNext ? 1 - nt * 0.07 : 1;
 
+        // No per-card scaling. Each card used to shrink to 93% once the next
+        // one entered, so the row settled at three different sizes (93%, 93%,
+        // 100%) and read as inconsistent rather than as one set.
         el.style.opacity = String(t);
-        el.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        el.style.transform = `translate(${x}px, ${y}px)`;
         el.style.filter = blur > 0.05 ? `blur(${blur}px)` : 'none';
       });
     };
