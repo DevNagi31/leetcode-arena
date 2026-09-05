@@ -4809,3 +4809,131 @@ table {
   .photo-grid { grid-template-columns: repeat(3, 1fr); }
   .photo-view-grid { grid-template-columns: 1fr; }
 }
+
+/* ===================================================================
+   SOLUTION VIEWER — split panes
+   Reviewing a solution means reading the problem and your code at the
+   same time, so these are panes, not tabs. Nielsen Norman: tabs are
+   wrong "when users need to simultaneously view information across
+   multiple tabs". Tabs survive only on phones, where the two genuinely
+   cannot both fit.
+   =================================================================== */
+
+.solutions-split {
+  display: grid;
+  grid-template-columns: var(--split, 45%) 7px 1fr;
+  gap: 0;
+  flex: 1;
+  min-height: 0;          /* lets the panes scroll instead of the modal */
+  overflow: hidden;
+}
+
+.split-pane {
+  min-width: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 20px 24px;
+}
+
+.split-pane:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.split-pane-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 0 10px;
+}
+
+/* Second and later headings in a pane need air above them. */
+.split-pane-title:not(:first-child) {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.split-pane-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+.split-pane-empty {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* --- Drag handle -------------------------------------------------- */
+.split-handle {
+  cursor: col-resize;
+  background: var(--border);
+  position: relative;
+  transition: background 0.15s;
+}
+
+.split-handle::after {
+  /* Widen the grab area well beyond the visible 7px line. */
+  content: '';
+  position: absolute;
+  inset: 0 -5px;
+}
+
+.split-handle:hover,
+.split-handle:active {
+  background: var(--accent, var(--text-secondary));
+}
+
+/* --- Pane contents ------------------------------------------------ */
+.solutions-split .solutions-view-code {
+  margin: 0;
+  max-height: none;       /* the pane scrolls, not the code block */
+}
+
+.solutions-split .note-content {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.solutions-split .photo-view-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+/* The mobile pane switcher is hidden wherever both panes fit. */
+.solutions-view-switch { display: none; }
+
+@media (max-width: 900px) {
+  .solutions-view-switch {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .solutions-split {
+    grid-template-columns: 1fr;
+  }
+
+  .split-handle { display: none; }
+
+  .split-pane {
+    display: none;
+    border-right: none;
+  }
+
+  .split-pane.pane-active { display: block; }
+}

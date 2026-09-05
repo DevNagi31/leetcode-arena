@@ -39,7 +39,15 @@ export default function MySolutionsTab({ showToast, user }) {
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingSolution, setViewingSolution] = useState(null);
-  const [viewTab, setViewTab] = useState('code');
+  // Which pane is showing on phones, where the two can't sit side by side.
+  // Defaults to the solution: that's what you opened the card to see, and the
+  // problem is one tap away.
+  const [viewPane, setViewPane] = useState('solution');
+  const [splitPct, setSplitPct] = useState(() => {
+    const saved = Number(localStorage.getItem('solutionSplitPct'));
+    return saved >= 25 && saved <= 75 ? saved : 45;
+  });
+  const splitRef = useRef(null);
   const [problemInput, setProblemInput] = useState('');
   const [fetchingProblem, setFetchingProblem] = useState(false);
   const [problemData, setProblemData] = useState(null);
@@ -280,7 +288,7 @@ export default function MySolutionsTab({ showToast, user }) {
     } catch (error) {
       setViewingSolution(solution);
     }
-    setViewTab(solution.snippet ? 'code' : 'notes');
+    setViewPane(solution.snippet || solution.note ? 'solution' : 'problem');
     setShowViewModal(true);
   };
 
@@ -375,6 +383,37 @@ export default function MySolutionsTab({ showToast, user }) {
   };
 
   const removePhoto = (idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx));
+
+  /**
+   * Drag the divider between the two panes. Code lines vary wildly in length,
+   * so a fixed split is wrong for someone as often as it's right; the chosen
+   * ratio is remembered.
+   */
+  const startDrag = (e) => {
+    const container = splitRef.current;
+    if (!container) return;
+    e.preventDefault();
+    const rect = container.getBoundingClientRect();
+
+    const onMove = (ev) => {
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setSplitPct(Math.min(75, Math.max(25, pct)));
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      document.body.style.userSelect = '';
+      setSplitPct((pct) => {
+        try { localStorage.setItem('solutionSplitPct', String(Math.round(pct))); } catch { /* private mode */ }
+        return pct;
+      });
+    };
+
+    // Without this the drag selects the problem text as it passes over it.
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 
   const photoSrc = (p) => (p.data ? `data:${p.mimeType};base64,${p.data}` : p.src);
 
@@ -832,96 +871,141 @@ export default function MySolutionsTab({ showToast, user }) {
               </button>
             </div>
 
-            {/* Tabs */}
-            <div className="solutions-view-tabs">
-              {viewingSolution.snippet && (
-                <button className={`solutions-view-tab ${viewTab === 'code' ? 'active' : ''}`} onClick={() => setViewTab('code')}>
-                  <Code size={14} /> Code
-                </button>
-              )}
-              {viewingSolution.problemDetails && (
-                <button className={`solutions-view-tab ${viewTab === 'problem' ? 'active' : ''}`} onClick={() => setViewTab('problem')}>
-                  <ChevronDown size={14} /> Problem
-                </button>
-              )}
-              {viewingSolution.note && (
-                <button className={`solutions-view-tab ${viewTab === 'notes' ? 'active' : ''}`} onClick={() => setViewTab('notes')}>
-                  <Edit3 size={14} /> Notes
-                </button>
-              )}
-              {viewingSolution.note?.images?.length > 0 && (
-                <button className={`solutions-view-tab ${viewTab === 'photos' ? 'active' : ''}`} onClick={() => setViewTab('photos')}>
-                  <ImageIcon size={14} /> Photos
-                  <span className="solutions-subtab-count">{viewingSolution.note.images.length}</span>
-                </button>
-              )}
+            {/* Both panes matter at once when you're recalling a solution, so
+                they sit side by side. The switcher below only appears on
+                phones, where they genuinely cannot both fit. */}
+            <div className="solutions-view-switch" role="tablist">
+              <button
+                role="tab"
+                aria-selected={viewPane === 'problem'}
+                className={`solutions-view-tab ${viewPane === 'problem' ? 'active' : ''}`}
+                onClick={() => setViewPane('problem')}
+              >
+                <ChevronDown size={14} /> Problem
+              </button>
+              <button
+                role="tab"
+                aria-selected={viewPane === 'solution'}
+                className={`solutions-view-tab ${viewPane === 'solution' ? 'active' : ''}`}
+                onClick={() => setViewPane('solution')}
+              >
+                <Code size={14} /> Your solution
+              </button>
             </div>
 
-            {/* Tab Content */}
-            <div className="solutions-view-content">
-              {viewTab === 'code' && viewingSolution.snippet && (
-                <pre className="solutions-view-code"><code>{viewingSolution.snippet.code}</code></pre>
-              )}
-
-              {viewTab === 'problem' && viewingSolution.problemDetails && (
-                <div className="solutions-view-problem">
-                  <div className="solutions-view-problem-topics">
-                    {(viewingSolution.problemDetails.topicTags || []).map(t => (
-                      <span key={t.name} className="topic-tag">{t.name}</span>
-                    ))}
-                  </div>
-                  <div className="solutions-view-problem-body"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content || '') }} />
-                </div>
-              )}
-
-              {viewTab === 'photos' && (
-                <div className="photo-view-grid">
-                  {viewingPhotos.length === 0 ? (
-                    <div className="empty-state"><p>Loading photos...</p></div>
-                  ) : viewingPhotos.map((p, i) => (
-                    <button
-                      key={p._id || i}
-                      type="button"
-                      className="photo-view-item"
-                      onClick={() => setLightbox(p)}
-                      aria-label={`Open photo ${i + 1} full size`}
-                    >
-                      {/* No loading="lazy": an inline data URI is already in
-                          memory, so there is nothing to defer — and an
-                          undecoded image is 0px tall under height:auto, which
-                          kept it out of view and stopped it ever loading.
-                          The intrinsic size reserves layout before decode. */}
-                      <img
-                        src={p.src}
-                        alt={`Handwritten note ${i + 1}`}
-                        width={p.width}
-                        height={p.height}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {viewTab === 'notes' && viewingSolution.note && (
-                <div className="solutions-view-notes">
-                  {viewingSolution.note.personalRating && (
-                    <div className="solutions-view-notes-rating">
-                      <span>Your difficulty rating:</span>
-                      <RatingStars value={viewingSolution.note.personalRating} />
+            <div
+              className="solutions-split"
+              ref={splitRef}
+              style={{ '--split': `${splitPct}%` }}
+            >
+              <section className={`split-pane ${viewPane === 'problem' ? 'pane-active' : ''}`}>
+                <h3 className="split-pane-title">Problem</h3>
+                {viewingSolution.problemDetails ? (
+                  <>
+                    <div className="solutions-view-problem-topics">
+                      {(viewingSolution.problemDetails.topicTags || []).map(t => (
+                        <span key={t.name} className="topic-tag">{t.name}</span>
+                      ))}
                     </div>
-                  )}
-                  <div className="note-content">{viewingSolution.note.content}</div>
-                  {viewingSolution.note.resources?.length > 0 && (
-                    <div className="note-resources">
-                      <strong>Resources:</strong>
-                      <ul>{viewingSolution.note.resources.map((r, i) => (
-                        <li key={i}><a href={r} target="_blank" rel="noopener noreferrer">{r}</a></li>
-                      ))}</ul>
+                    <div
+                      className="solutions-view-problem-body"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content || '') }}
+                    />
+                  </>
+                ) : (
+                  <p className="split-pane-empty">
+                    Couldn't load the problem description from LeetCode.
+                    {viewingSolution.snippet?.link && (
+                      <>
+                        {' '}
+                        <a href={viewingSolution.snippet.link} target="_blank" rel="noopener noreferrer">
+                          Open it on LeetCode
+                        </a>.
+                      </>
+                    )}
+                  </p>
+                )}
+              </section>
+
+              <div
+                className="split-handle"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize panes"
+                onPointerDown={startDrag}
+              />
+
+              <section className={`split-pane ${viewPane === 'solution' ? 'pane-active' : ''}`}>
+                {viewingSolution.snippet && (
+                  <>
+                    <h3 className="split-pane-title">
+                      <Code size={13} /> Your code
+                      <span className="split-pane-meta">{viewingSolution.snippet.language}</span>
+                    </h3>
+                    <pre className="solutions-view-code"><code>{viewingSolution.snippet.code}</code></pre>
+                  </>
+                )}
+
+                {viewingSolution.note && (
+                  <>
+                    <h3 className="split-pane-title">
+                      <Edit3 size={13} /> Notes
+                      {viewingSolution.note.personalRating && (
+                        <span className="split-pane-meta">
+                          <RatingStars value={viewingSolution.note.personalRating} />
+                        </span>
+                      )}
+                    </h3>
+                    <div className="note-content">{viewingSolution.note.content}</div>
+                    {viewingSolution.note.resources?.length > 0 && (
+                      <div className="note-resources">
+                        <strong>Resources:</strong>
+                        <ul>{viewingSolution.note.resources.map((r, i) => (
+                          <li key={i}><a href={r} target="_blank" rel="noopener noreferrer">{r}</a></li>
+                        ))}</ul>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {viewingSolution.note?.images?.length > 0 && (
+                  <>
+                    <h3 className="split-pane-title">
+                      <ImageIcon size={13} /> Handwritten notes
+                      <span className="split-pane-meta">{viewingSolution.note.images.length}</span>
+                    </h3>
+                    <div className="photo-view-grid">
+                      {viewingPhotos.length === 0 ? (
+                        <p className="split-pane-empty">Loading photos...</p>
+                      ) : viewingPhotos.map((p, i) => (
+                        <button
+                          key={p._id || i}
+                          type="button"
+                          className="photo-view-item"
+                          onClick={() => setLightbox(p)}
+                          aria-label={`Open photo ${i + 1} full size`}
+                        >
+                          {/* No loading="lazy": an inline data URI is already in
+                              memory, so there is nothing to defer — and an
+                              undecoded image is 0px tall under height:auto,
+                              which kept it out of view and stopped it ever
+                              loading. The intrinsic size reserves layout. */}
+                          <img
+                            src={p.src}
+                            alt={`Handwritten note ${i + 1}`}
+                            width={p.width}
+                            height={p.height}
+                          />
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  </>
+                )}
+
+                {!viewingSolution.snippet && !viewingSolution.note && (
+                  <p className="split-pane-empty">Nothing saved for this problem yet.</p>
+                )}
+              </section>
             </div>
           </div>
         </div>
