@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { HelpCircle } from 'lucide-react';
 import { EDUCATION_LEVELS, YEAR_OPTIONS, checkPasswordStrength } from '../utils/constants';
@@ -26,6 +26,21 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const helpRef = useRef(null);
+
+  useEffect(() => {
+    if (!showHelp) return;
+    const onDown = (e) => {
+      if (helpRef.current && !helpRef.current.contains(e.target)) setShowHelp(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setShowHelp(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showHelp]);
 
   useEffect(() => {
     const fetchCountries = async () => {
@@ -93,25 +108,31 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
         <div className="form-group">
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             LEETCODE USERNAME
-            <span style={{ position: 'relative', display: 'inline-flex' }}>
+            <span className="field-help" ref={helpRef}>
               <button
                 type="button"
                 aria-label="Where do I find my LeetCode username?"
+                aria-expanded={showHelp}
                 onClick={() => setShowHelp((v) => !v)}
-                onMouseEnter={() => setShowHelp(true)}
-                onMouseLeave={() => setShowHelp(false)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-secondary)', display: 'inline-flex' }}
+                className="field-help-btn"
               >
                 <HelpCircle size={14} strokeWidth={2.5} />
               </button>
               {showHelp && (
-                <span style={{
-                  position: 'absolute', top: '20px', left: '0', zIndex: 10, width: '240px',
-                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                  padding: '10px 12px', fontSize: '11px', lineHeight: '1.5',
-                  color: 'var(--text-secondary)', boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
-                }}>
-                  Go to your LeetCode profile — your username is shown right below your name at the top of the page. Enter that exact username here.
+                <span className="field-help-popover" role="tooltip">
+                  <img
+                    src="/leetcode-username-help.jpg"
+                    alt="A LeetCode profile header. The username sits directly beneath the display name and is highlighted."
+                    className="field-help-img"
+                    width={660}
+                    height={230}
+                  />
+                  <span className="field-help-text">
+                    Open your LeetCode profile. Your username is the smaller grey text
+                    directly under your display name — it's also the last part of your
+                    profile URL (<code>leetcode.com/u/<b>your-username</b></code>).
+                    Enter it exactly.
+                  </span>
                 </span>
               )}
             </span>
