@@ -135,18 +135,20 @@ export default function FriendsTab({ currentUser, showToast }) {
                     <div className="friend-meta">{friend.country} • {friend.institutionName?.split(' ').slice(0,3).join(' ')}</div>
                     <div className="friend-stats">
                       <span className="friend-stat"><Flame size={12} /> {friend.currentStreak || 0} streak</span>
-                      <span className="friend-stat" style={{ color: '#4CAF50' }}>E: {friend.easy || 0}</span>
-                      <span className="friend-stat" style={{ color: '#FF9800' }}>M: {friend.medium || 0}</span>
-                      <span className="friend-stat" style={{ color: '#F44336' }}>H: {friend.hard || 0}</span>
+                      <span className="friend-stat" style={{ color: 'var(--diff-easy)' }}>E: {friend.easy || 0}</span>
+                      <span className="friend-stat" style={{ color: 'var(--diff-medium)' }}>M: {friend.medium || 0}</span>
+                      <span className="friend-stat" style={{ color: 'var(--diff-hard)' }}>H: {friend.hard || 0}</span>
                       <span className="friend-stat">Total: {friend.problems || 0}</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <button className="pixel-button primary" style={{ fontSize: '11px', padding: '6px 12px' }}
+                      aria-label={`Message ${friend.username}`}
                       onClick={(e) => { e.stopPropagation(); setUnreadCounts(prev => ({ ...prev, [friend._id]: 0 })); setChatFriend(friend); }}>
                       <MessageCircle size={12} />
                     </button>
                     <button className="pixel-button" style={{ fontSize: '11px', padding: '6px 12px' }}
+                      aria-label={`Remove ${friend.username} from friends`}
                       onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend._id); }}>
                       Remove
                     </button>
@@ -206,9 +208,9 @@ export default function FriendsTab({ currentUser, showToast }) {
                   <div className="friend-name">{user.username}</div>
                   <div className="friend-meta">{user.country} • {user.institutionName?.split(' ').slice(0,3).join(' ')}</div>
                   <div className="friend-stats">
-                    <span className="friend-stat" style={{ color: '#4CAF50' }}>E: {user.easy || 0}</span>
-                    <span className="friend-stat" style={{ color: '#FF9800' }}>M: {user.medium || 0}</span>
-                    <span className="friend-stat" style={{ color: '#F44336' }}>H: {user.hard || 0}</span>
+                    <span className="friend-stat" style={{ color: 'var(--diff-easy)' }}>E: {user.easy || 0}</span>
+                    <span className="friend-stat" style={{ color: 'var(--diff-medium)' }}>M: {user.medium || 0}</span>
+                    <span className="friend-stat" style={{ color: 'var(--diff-hard)' }}>H: {user.hard || 0}</span>
                     <span className="friend-stat">Total: {user.problems || 0}</span>
                   </div>
                 </div>

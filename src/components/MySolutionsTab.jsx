@@ -456,6 +456,9 @@ export default function MySolutionsTab({ showToast, user }) {
 
       {section === 'solved' && (
         <div className="solutions-solved-section">
+          {/* The list jumped straight from the page h1 to h4. Screen-reader
+              users navigate by heading, so the outline has to be unbroken. */}
+          <h2 className="sr-only">Recent accepted submissions</h2>
           <div className="solutions-solved-header">
             <div>
               <p className="solutions-solved-hint">
@@ -496,7 +499,7 @@ export default function MySolutionsTab({ showToast, user }) {
                 return (
                   <div key={p.id} className="solutions-solved-row">
                     <div className="solutions-solved-info">
-                      <h4 className="solutions-solved-title">{p.title}</h4>
+                      <h3 className="solutions-solved-title">{p.title}</h3>
                       <div className="solutions-solved-meta">
                         <span className="solutions-meta-item">
                           <Clock size={12} /> {formatRelative(p.timestamp)}
@@ -536,6 +539,7 @@ export default function MySolutionsTab({ showToast, user }) {
 
       {section === 'mine' && (<>
       {/* Header */}
+      <h2 className="sr-only">Your saved solutions</h2>
       <div className="solutions-header">
         <div className="solutions-search">
           <Search size={16} />

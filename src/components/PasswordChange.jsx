@@ -63,8 +63,11 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
         <h2 className="modal-title">CHANGE PASSWORD</h2>
         <form className="edit-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>CURRENT PASSWORD</label>
+            <label htmlFor="pc-current">CURRENT PASSWORD</label>
             <input
+              id="pc-current"
+              name="currentPassword"
+              autoComplete="current-password"
               type="password"
               className="pixel-input"
               value={formData.currentPassword}
@@ -74,8 +77,11 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
           </div>
 
           <div className="form-group">
-            <label>NEW PASSWORD</label>
+            <label htmlFor="pc-new">NEW PASSWORD</label>
             <input
+              id="pc-new"
+              name="newPassword"
+              autoComplete="new-password"
               type="password"
               className="pixel-input"
               value={formData.newPassword}
@@ -98,8 +104,11 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
           </div>
 
           <div className="form-group">
-            <label>CONFIRM NEW PASSWORD</label>
+            <label htmlFor="pc-confirm">CONFIRM NEW PASSWORD</label>
             <input
+              id="pc-confirm"
+              name="confirmPassword"
+              autoComplete="new-password"
               type="password"
               className="pixel-input"
               value={formData.confirmPassword}

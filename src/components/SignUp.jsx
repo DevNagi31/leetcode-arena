@@ -101,12 +101,12 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
   return (
     <div className="form-container">
       <button className="back-button" onClick={() => onNavigate('auth-choice')}>← BACK</button>
-      <h2 className="form-title">CREATE ACCOUNT</h2>
+      <h1 className="form-title">CREATE ACCOUNT</h1>
       {error && <div className="error-message">{error}</div>}
       <form className="pixel-form" onSubmit={handleSubmit}>
 
         <div className="form-group">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label htmlFor="signup-leetcode" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             LEETCODE USERNAME
             <span className="field-help" ref={helpRef}>
               <button
@@ -137,26 +137,30 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
               )}
             </span>
           </label>
-          <input type="text" className="pixel-input" placeholder="Your LeetCode username"
+          <input type="text" id="signup-leetcode" name="leetcodeUsername" autoComplete="off"
+            className="pixel-input" placeholder="Your LeetCode username"
             value={formData.leetcodeUsername}
             onChange={(e) => setFormData({ ...formData, leetcodeUsername: e.target.value })} required />
         </div>
 
         <div className="form-group">
-          <label>USERNAME</label>
-          <input type="text" className="pixel-input" placeholder="3-20 characters"
+          <label htmlFor="signup-username">USERNAME</label>
+          <input type="text" id="signup-username" name="username" autoComplete="username"
+            className="pixel-input" placeholder="3-20 characters"
             value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} required />
         </div>
 
         <div className="form-group">
-          <label>EMAIL</label>
-          <input type="email" className="pixel-input" placeholder="your@email.com"
+          <label htmlFor="signup-email">EMAIL</label>
+          <input type="email" id="signup-email" name="email" autoComplete="email"
+            className="pixel-input" placeholder="your@email.com"
             value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
         </div>
 
         <div className="form-group">
-          <label>PASSWORD</label>
-          <input type="password" className="pixel-input" placeholder="Min 8 chars, upper, lower & number"
+          <label htmlFor="signup-password">PASSWORD</label>
+          <input type="password" id="signup-password" name="password" autoComplete="new-password"
+            className="pixel-input" placeholder="Min 8 chars, upper, lower & number"
             value={formData.password} onChange={handlePasswordChange} required />
           {formData.password && (
             <div style={{ marginTop: '8px' }}>
@@ -175,8 +179,9 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
         </div>
 
         <div className="form-group">
-          <label>COUNTRY</label>
-          <select className="pixel-input" value={formData.country}
+          <label htmlFor="signup-country">COUNTRY</label>
+          <select id="signup-country" name="country" autoComplete="country-name"
+            className="pixel-input" value={formData.country}
             onChange={(e) => setFormData({ ...formData, country: e.target.value, institutionName: '' })} required>
             <option value="">Select Country</option>
             {countries.map(c => <option key={c} value={c}>{c}</option>)}
@@ -185,12 +190,13 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
 
         {formData.country && (
           <div className="form-group">
-            <label>INSTITUTION</label>
+            <label htmlFor="signup-institution">INSTITUTION</label>
             {!showCustomInput ? (
               <>
                 <input type="text" className="pixel-input" placeholder="Start typing to search..."
                   value={formData.institutionName} onChange={(e) => setFormData({ ...formData, institutionName: e.target.value })}
-                  id="institution-search" name="institutionName" list="universities" required />
+                  id="signup-institution" name="institutionName" autoComplete="organization"
+                  list="universities" required />
                 <datalist id="universities">
                   {universities.map((uni, idx) => <option key={idx} value={uni.name}>{uni.name}</option>)}
                 </datalist>
@@ -200,7 +206,8 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
               </>
             ) : (
               <>
-                <input type="text" className="pixel-input" placeholder="Enter institution name"
+                <input type="text" id="signup-institution" name="institutionName" autoComplete="organization"
+                  className="pixel-input" placeholder="Enter institution name"
                   value={formData.institutionName} onChange={(e) => setFormData({ ...formData, institutionName: e.target.value })} required />
                 <button type="button" className="link-button" onClick={() => setShowCustomInput(false)} style={{ marginTop: '8px', fontSize: '12px' }}>← Back to search</button>
               </>
@@ -209,8 +216,9 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
         )}
 
         <div className="form-group">
-          <label>EDUCATION LEVEL</label>
-          <select className="pixel-input" value={formData.educationLevel}
+          <label htmlFor="signup-education">EDUCATION LEVEL</label>
+          <select id="signup-education" name="educationLevel"
+            className="pixel-input" value={formData.educationLevel}
             onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value, year: '' })} required>
             <option value="">Select</option>
             {EDUCATION_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
@@ -219,8 +227,9 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
 
         {formData.educationLevel && (
           <div className="form-group">
-            <label>YEAR</label>
-            <select className="pixel-input" value={formData.year}
+            <label htmlFor="signup-year">YEAR</label>
+            <select id="signup-year" name="year"
+              className="pixel-input" value={formData.year}
               onChange={(e) => setFormData({ ...formData, year: e.target.value })} required>
               <option value="">Select</option>
               {YEAR_OPTIONS[formData.educationLevel]?.map(y => <option key={y} value={y}>{y}</option>)}

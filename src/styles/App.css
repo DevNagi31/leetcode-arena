@@ -5,8 +5,12 @@
   --bg-secondary: #f6ecdc;
   --bg-tertiary: #ecddc6;
   --text-primary: #2a2018;
-  --text-secondary: #6b5a48;
-  --text-tertiary: #b09a82;
+  /* Both of these were below the 4.5:1 AA threshold — tertiary sat at 2.02:1
+     against the tertiary background, which is most of the small print in the
+     app. Darkened until every text/background pairing passes, keeping a
+     visible step between the two levels. */
+  --text-secondary: #4f4132;   /* 7.37:1 worst case */
+  --text-tertiary: #736046;    /* 4.50:1 worst case */
   --border: #e3d4bd;
   --border-dark: #c9b496;
   --shadow: rgba(74, 52, 30, 0.05);
@@ -15,8 +19,19 @@
   --bubble-me: #2a2018;
   --bubble-me-text: #fdf7ee;
   --accent: #7b83d6;
+  /* Text placed ON the accent. Light text over the brand purple is only
+     3.25:1; dark text is 4.60:1, so the brand colour survives untouched. */
+  --on-accent: #2a2018;
+  /* The accent used AS text on a page background. #7b83d6 on the cream
+     background is 3.25:1, so links and icons need a darker variant. */
+  --accent-text: #5f68c8;
   --accent-muted: #dde0f5;
   --heatmap-empty: #ecddc6;
+  /* Difficulty colours need different values per theme; a single hex cannot
+     clear 4.5:1 on both a cream and a near-black background. */
+  --diff-easy: #1b6b20;
+  --diff-medium: #7a5600;
+  --diff-hard: #a51b13;
   --rgb-gradient: linear-gradient(90deg, #ff5f6d, #ffc371, #47e891, #4facfe, #b96bff);
 }
 
@@ -25,8 +40,8 @@
   --bg-secondary: #241c15;
   --bg-tertiary: #30251b;
   --text-primary: #f1e7d8;
-  --text-secondary: #b9a690;
-  --text-tertiary: #7a6b58;
+  --text-secondary: #c9b8a2;   /* 7.72:1 worst case */
+  --text-tertiary: #9c8c78;    /* 4.58:1 worst case, was 2.90 */
   --border: #30251b;
   --border-dark: #4a3a2a;
   --shadow: rgba(0, 0, 0, 0.3);
@@ -35,8 +50,13 @@
   --bubble-me: #f1e7d8;
   --bubble-me-text: #1a1410;
   --accent: #989fe8;
+  --on-accent: #1a1410;      /* 7.35:1 on the accent */
+  --accent-text: #989fe8;    /* 7.35:1 on the dark background already */
   --accent-muted: #2f3050;
   --heatmap-empty: #30251b;
+  --diff-easy: #6ee7a0;
+  --diff-medium: #f0c14b;
+  --diff-hard: #ff8080;
   --rgb-gradient: linear-gradient(90deg, #ff5f6d, #ffc371, #47e891, #4facfe, #b96bff);
 }
 
@@ -289,7 +309,7 @@ h1, h2, h3, h4,
   color: var(--accent);
   margin-bottom: 12px;
 }
-.lp-eyebrow svg { color: var(--accent); }
+.lp-eyebrow svg { color: var(--accent-text); }
 
 .lp-heading {
   font-size: 34px;
@@ -551,14 +571,14 @@ h1, h2, h3, h4,
 }
 .feed-text { flex: 1; min-width: 0; }
 .feed-line { font-size: 14px; color: #fdfaf4; }
-.feed-target { color: var(--accent); font-weight: 700; }
+.feed-target { color: var(--accent-text); font-weight: 700; }
 .feed-time { font-size: 12px; color: rgba(253, 250, 244, 0.55); margin-top: 2px; }
 .feed-check { color: #5bb98c; flex-shrink: 0; }
 
 /* CTA */
 .cta-section { min-height: 80vh; }
 .cta-inner { display: flex; flex-direction: column; align-items: center; max-width: 560px; }
-.cta-icon { color: var(--accent); margin-bottom: 14px; }
+.cta-icon { color: var(--accent-text); margin-bottom: 14px; }
 .cta-title {
   font-family: 'Fredoka', sans-serif;
   font-size: 46px;
@@ -659,7 +679,7 @@ h1, h2, h3, h4,
   color: var(--text-secondary);
 }
 
-.hero-stat svg { color: var(--accent); }
+.hero-stat svg { color: var(--accent-text); }
 
 @keyframes fadeInUp {
   from {
@@ -761,7 +781,7 @@ h1, h2, h3, h4,
 
 .pixel-button.primary {
   background: var(--accent);
-  color: #fdf7ee;
+  color: var(--on-accent);
   border-color: var(--accent);
   padding: 14px 28px;
   font-size: 15px;
@@ -770,7 +790,7 @@ h1, h2, h3, h4,
 
 .pixel-button.primary:hover {
   background: var(--accent);
-  color: #fdf7ee;
+  color: var(--on-accent);
   filter: brightness(1.04);
   transform: translateY(-1px);
 }
@@ -4563,10 +4583,10 @@ table {
 .tour-btn-primary {
   background: var(--accent, var(--text-primary));
   border-color: transparent;
-  color: #fff;
+  color: var(--on-accent);
 }
 
-.tour-btn-primary:hover { color: #fff; opacity: 0.9; }
+.tour-btn-primary:hover { color: var(--on-accent); opacity: 0.9; }
 
 .tour-skip {
   display: block;
@@ -4936,4 +4956,71 @@ table {
   }
 
   .split-pane.pane-active { display: block; }
+}
+
+/* ===================================================================
+   ACCESSIBILITY BASELINE
+   =================================================================== */
+
+/* --- Visible focus ------------------------------------------------
+   Four rules in this file set `outline: none` and nothing replaced it,
+   so keyboard users had no idea where they were (WCAG 2.4.7). This
+   restores one consistent indicator everywhere.
+
+   :focus-visible rather than :focus, so the ring appears for keyboard
+   and assistive-tech users without outlining every mouse click. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-text, var(--text-primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The inputs whose outline was explicitly removed need it back, at a
+   specificity that beats the original `outline: none !important`. */
+.pixel-input:focus-visible,
+.chat-input:focus-visible,
+.search-input:focus-visible,
+.solutions-search input:focus-visible {
+  outline: 2px solid var(--accent-text, var(--text-primary)) !important;
+  outline-offset: 1px;
+}
+
+/* Never leave a focused element hidden behind a sticky header. */
+:where(a, button, input, select, textarea, [tabindex]) {
+  scroll-margin-block: 80px;
+}
+
+/* --- Skip link ----------------------------------------------------
+   Lets keyboard users jump past the header straight to the content
+   instead of tabbing through it on every view. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 10002;
+  padding: 10px 16px;
+  border-radius: 0 0 8px 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Visually hidden, still announced by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

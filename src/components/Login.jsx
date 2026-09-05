@@ -34,13 +34,16 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
   return (
     <div className="form-container">
       <button className="back-button" onClick={() => onNavigate('auth-choice')}>← BACK</button>
-      <h2 className="form-title">LOGIN</h2>
+      <h1 className="form-title">LOGIN</h1>
       
       <form className="pixel-form" onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>EMAIL</label>
+          <label htmlFor="login-email">EMAIL</label>
           <input
+            id="login-email"
+            name="email"
             type="email"
+            autoComplete="email"
             className="pixel-input"
             placeholder="your@email.com"
             value={formData.email}
@@ -50,9 +53,12 @@ const Login = ({ onNavigate, setToken, setCurrentUser, showToast }) => {
         </div>
 
         <div className="form-group">
-          <label>PASSWORD</label>
+          <label htmlFor="login-password">PASSWORD</label>
           <input
+            id="login-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             className="pixel-input"
             placeholder="Enter your password"
             value={formData.password}

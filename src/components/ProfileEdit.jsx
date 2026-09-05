@@ -30,8 +30,11 @@ const ProfileEdit = ({ user, onSave, onCancel, showToast }) => {
         <h2 className="modal-title">EDIT PROFILE</h2>
         <form className="edit-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>INSTITUTION</label>
+            <label htmlFor="pe-institution">INSTITUTION</label>
             <input
+              id="pe-institution"
+              name="institutionName"
+              autoComplete="organization"
               type="text"
               className="pixel-input"
               value={formData.institutionName}
@@ -41,8 +44,10 @@ const ProfileEdit = ({ user, onSave, onCancel, showToast }) => {
           </div>
 
           <div className="form-group">
-            <label>EDUCATION LEVEL</label>
+            <label htmlFor="pe-education">EDUCATION LEVEL</label>
             <select
+              id="pe-education"
+              name="educationLevel"
               className="pixel-input"
               value={formData.educationLevel}
               onChange={(e) => setFormData({...formData, educationLevel: e.target.value, year: ''})}
@@ -55,8 +60,10 @@ const ProfileEdit = ({ user, onSave, onCancel, showToast }) => {
           </div>
 
           <div className="form-group">
-            <label>YEAR / LEVEL</label>
+            <label htmlFor="pe-year">YEAR / LEVEL</label>
             <select
+              id="pe-year"
+              name="year"
               className="pixel-input"
               value={formData.year}
               onChange={(e) => setFormData({...formData, year: e.target.value})}

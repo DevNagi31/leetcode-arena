@@ -80,11 +80,11 @@ export default function ForgotPassword({ onNavigate, showToast }) {
         else onNavigate('login');
       }}>← BACK</button>
 
-      <h2 className="form-title">
+      <h1 className="form-title">
         {step === 'email' && 'FORGOT PASSWORD'}
         {step === 'code' && 'ENTER CODE'}
         {step === 'newPassword' && 'NEW PASSWORD'}
-      </h2>
+      </h1>
 
       {error && <div className="error-message">{error}</div>}
 
@@ -94,8 +94,9 @@ export default function ForgotPassword({ onNavigate, showToast }) {
             Enter your email and we'll send you a reset code.
           </p>
           <div className="form-group">
-            <label>EMAIL</label>
-            <input type="email" className="pixel-input" placeholder="your@email.com"
+            <label htmlFor="fp-email">EMAIL</label>
+            <input type="email" id="fp-email" name="email" autoComplete="email"
+              className="pixel-input" placeholder="your@email.com"
               value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <button type="submit" className="pixel-button primary full-width" disabled={loading}>
@@ -110,8 +111,10 @@ export default function ForgotPassword({ onNavigate, showToast }) {
             Enter the 6-digit code sent to {email}
           </p>
           <div className="form-group">
-            <label>RESET CODE</label>
-            <input type="text" className="pixel-input" placeholder="Enter 6-digit code"
+            <label htmlFor="fp-code">RESET CODE</label>
+            <input type="text" id="fp-code" name="code" inputMode="numeric"
+              autoComplete="one-time-code"
+              className="pixel-input" placeholder="Enter 6-digit code"
               value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               maxLength={6} required style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '24px' }} />
           </div>
@@ -124,16 +127,18 @@ export default function ForgotPassword({ onNavigate, showToast }) {
       {step === 'newPassword' && (
         <form className="pixel-form" onSubmit={handleResetPassword}>
           <div className="form-group">
-            <label>NEW PASSWORD</label>
-            <input type="password" className="pixel-input" placeholder="Min 8 chars, upper, lower & number"
+            <label htmlFor="fp-new">NEW PASSWORD</label>
+            <input type="password" id="fp-new" name="newPassword" autoComplete="new-password"
+              className="pixel-input" placeholder="Min 8 chars, upper, lower & number"
               value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
             <p style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
               {PASSWORD_HINT}
             </p>
           </div>
           <div className="form-group">
-            <label>CONFIRM PASSWORD</label>
-            <input type="password" className="pixel-input" placeholder="Confirm new password"
+            <label htmlFor="fp-confirm">CONFIRM PASSWORD</label>
+            <input type="password" id="fp-confirm" name="confirmPassword" autoComplete="new-password"
+              className="pixel-input" placeholder="Confirm new password"
               value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
           </div>
           <button type="submit" className="pixel-button primary full-width" disabled={loading}>
