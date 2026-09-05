@@ -383,7 +383,21 @@ h1, h2, h3, h4,
 .acc-card .lp-eyebrow { margin-bottom: 12px; }
 .acc-card-title { font-size: 26px; font-weight: 700; color: #fdfaf4; margin-bottom: 8px; }
 .acc-card-desc { font-size: 14px; line-height: 1.6; color: rgba(253, 250, 244, 0.7); margin-bottom: 22px; }
-.acc-visual { margin-top: auto; }
+.acc-visual {
+  margin-top: auto;
+  /* The three visuals are naturally 144px (stats), 109px (heatmap) and 166px
+     (podium) tall. The cards are equal height, so unequal visuals left the
+     text above them ending at three different heights. Reserve one block so
+     every card breaks in the same place. */
+  min-height: 175px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Two lines at 14px/1.6 — keeps a shorter description from shifting the
+   visual below it up relative to its neighbours. */
+.acc-card-desc { min-height: 45px; }
 
 /* render the inner visuals in their final state (no in-view dependency) */
 .acc-card .hm-cell { opacity: 1; transform: none; }
