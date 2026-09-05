@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Trophy, LogOut, Edit, Lock, Menu, Moon, Sun,
   BarChart3, Globe, Building2, Code, Users,
-  Activity
+  Activity, HelpCircle
 } from 'lucide-react';
 import ProfileEdit from './ProfileEdit';
 import PasswordChange from './PasswordChange';
@@ -12,8 +12,41 @@ import Leaderboard from './Leaderboard';
 import LoadingScreen from './LoadingScreen';
 import RankBadge from './RankBadge';
 import AnalyticsTab from './AnalyticsTab';
+import Tour from './Tour';
 import { authPost, authPut } from '../utils/api';
 import { calculateTier } from '../utils/tiers';
+
+// Shown once per browser on first visit to the dashboard, and replayable from
+// the menu. Selectors point at data-tour attributes on the tab buttons.
+const TOUR_STEPS = [
+  {
+    selector: '[data-tour="overview"]',
+    title: 'Your stats at a glance',
+    body: 'Total solved, the easy/medium/hard split, and where you rank globally, in your country, and at your school.',
+  },
+  {
+    selector: '[data-tour="analytics"]',
+    title: 'Streaks and consistency',
+    body: 'An activity heatmap, current and longest streaks, and a weekly goal you can set for yourself.',
+  },
+  {
+    selector: '[data-tour="solutions"]',
+    title: 'Save your solutions',
+    body: 'Paste a LeetCode link to pull in the problem, then keep your code and notes beside it. Recent submissions are listed for you.',
+  },
+  {
+    selector: '[data-tour="friends"]',
+    title: 'Add friends',
+    body: 'Search by username, compare stats, and message each other in real time.',
+  },
+  {
+    selector: '[data-tour="leaderboard"]',
+    title: 'Compete',
+    body: 'Rankings globally, by country, by university, or just among your friends.',
+  },
+];
+
+const TOUR_KEY = 'tourSeen';
 
 export default function Dashboard({ user, setUser, onNavigate, onLogout, showToast, dark, setDark }) {
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -24,6 +57,14 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
   const [editingGoal, setEditingGoal] = useState(false);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState(user?.weeklyGoal?.target || 5);
   const menuRef = useRef(null);
+  const [showTour, setShowTour] = useState(() => {
+    try { return !localStorage.getItem(TOUR_KEY); } catch { return false; }
+  });
+
+  const endTour = () => {
+    setShowTour(false);
+    try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode */ }
+  };
 
   useEffect(() => {
     const autoRefresh = async () => {
@@ -80,6 +121,7 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
             <button onClick={() => { setDark(!dark); }}>
               {dark ? <Sun size={14} /> : <Moon size={14} />} {dark ? 'Light Mode' : 'Dark Mode'}
             </button>
+            <button onClick={() => { setMenuOpen(false); setShowTour(true); }}><HelpCircle size={14} /> Show Walkthrough</button>
             <div className="dropdown-divider" />
             <button className="dropdown-danger" onClick={() => { setMenuOpen(false); onLogout(); }}><LogOut size={14} /> Logout</button>
           </div>
@@ -99,11 +141,11 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
       </div>
 
       <div className="dashboard-tabs">
-        <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}><BarChart3 size={16} /> Overview</button>
-        <button className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}><Activity size={16} /> Analytics</button>
-        <button className={`tab-btn ${activeTab === 'solutions' ? 'active' : ''}`} onClick={() => setActiveTab('solutions')}><Code size={16} /> My Solutions</button>
-        <button className={`tab-btn ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}><Users size={16} /> Friends</button>
-        <button className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}><Trophy size={16} /> Leaderboard</button>
+        <button data-tour="overview" className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}><BarChart3 size={16} /> Overview</button>
+        <button data-tour="analytics" className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}><Activity size={16} /> Analytics</button>
+        <button data-tour="solutions" className={`tab-btn ${activeTab === 'solutions' ? 'active' : ''}`} onClick={() => setActiveTab('solutions')}><Code size={16} /> My Solutions</button>
+        <button data-tour="friends" className={`tab-btn ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}><Users size={16} /> Friends</button>
+        <button data-tour="leaderboard" className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}><Trophy size={16} /> Leaderboard</button>
       </div>
 
       {activeTab === 'overview' && (
@@ -165,6 +207,8 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
           embedded
         />
       )}
+
+      {showTour && <Tour steps={TOUR_STEPS} onClose={endTour} />}
 
       {showEditProfile && <ProfileEdit user={user} onSave={handleSaveProfile} onCancel={() => setShowEditProfile(false)} showToast={showToast} />}
       {showChangePassword && <PasswordChange onSave={handleChangePassword} onCancel={() => setShowChangePassword(false)} showToast={showToast} />}
