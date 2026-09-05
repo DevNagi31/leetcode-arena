@@ -4594,3 +4594,218 @@ table {
   /* The centring above already keeps it on screen at phone widths, since
      max-width clamps it to the viewport. */
 }
+
+/* ===================================================================
+   NOTE PHOTOS + DICTATION
+   =================================================================== */
+
+.notes-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.notes-label-row label { margin-bottom: 0; }
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+
+/* --- Dictation --------------------------------------------------- */
+.dictate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dictate-btn:hover { color: var(--text-primary); }
+
+.dictate-btn.recording {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.dictate-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.dictate-status em { color: var(--text-tertiary); font-style: italic; }
+
+.dictate-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+  animation: dictate-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes dictate-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.75); }
+}
+
+.dictate-error {
+  margin-top: 7px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #ef4444;
+}
+
+/* --- Photo attachments ------------------------------------------- */
+.photo-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.photo-thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.66);
+  color: #fff;
+}
+
+.photo-remove:hover { background: rgba(239, 68, 68, 0.9); }
+
+.photo-size {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+}
+
+.photo-add-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Photos tab in the view modal -------------------------------- */
+.photo-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.photo-view-item {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  cursor: zoom-in;
+  display: block;
+}
+
+.photo-view-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Guarantees a non-zero box even before decode, so nothing can collapse to
+     0px and stall. */
+  min-height: 60px;
+  background: var(--bg-tertiary, var(--bg-secondary));
+}
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: zoom-out;
+}
+
+.photo-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.photo-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.photo-lightbox-close:hover { background: rgba(255, 255, 255, 0.22); }
+
+@media (max-width: 480px) {
+  .photo-grid { grid-template-columns: repeat(3, 1fr); }
+  .photo-view-grid { grid-template-columns: 1fr; }
+}

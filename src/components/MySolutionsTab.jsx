@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DOMPurify from 'dompurify';
-import { Code, Search, ChevronDown, Trash2, Edit3, Eye, ExternalLink, Star, X, Clock, Cpu, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Code, Search, ChevronDown, Trash2, Edit3, Eye, ExternalLink, Star, X, Clock, Cpu, CheckCircle2, RefreshCw, Camera, Mic, MicOff, ImageIcon, Loader2 } from 'lucide-react';
 import { CardSkeleton } from './LoadingSkeleton';
 import { authGet, authPost, authPut, authDelete } from '../utils/api';
+import { compressImage, formatBytes, MAX_IMAGES } from '../utils/image';
+import useSpeechRecognition from '../utils/useSpeechRecognition';
 
 const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++', 'C', 'Go', 'Rust', 'TypeScript', 'Ruby', 'Swift', 'Kotlin', 'Other'];
 const RATING_LABELS = ['', 'Trivial', 'Easy', 'Medium', 'Hard', 'Brutal'];
@@ -53,6 +55,25 @@ export default function MySolutionsTab({ showToast, user }) {
     notes: '',
     personalRating: 3
   });
+  // Photos of handwritten notes. Existing ones carry only an _id (the bytes
+  // stay on the server); newly added ones carry base64 `data`.
+  const [photos, setPhotos] = useState([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
+  const [viewingPhotos, setViewingPhotos] = useState([]);
+  const [lightbox, setLightbox] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Dictated phrases are appended to the notes field so they can be corrected
+  // before saving — the browser's recogniser is unreliable on jargon.
+  const appendDictation = useCallback((text) => {
+    setSolutionData((prev) => {
+      const sep = !prev.notes || /\s$/.test(prev.notes) ? '' : ' ';
+      return { ...prev, notes: `${prev.notes}${sep}${text} ` };
+    });
+  }, []);
+
+  const speech = useSpeechRecognition({ onResult: appendDictation });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSolutions(); }, []);
@@ -123,14 +144,17 @@ export default function MySolutionsTab({ showToast, user }) {
       const snippets = snippetsRes.data.snippets || snippetsRes.data || [];
       const notes = notesRes.data.notes || notesRes.data || [];
 
+      // Both lists arrive newest-first. Keep the first entry seen for each
+      // problem — assigning unconditionally meant the OLDEST record won, so a
+      // newer note (and anything attached to it) silently disappeared.
       const combined = {};
       snippets.forEach(s => {
         if (!combined[s.problemName]) combined[s.problemName] = {};
-        combined[s.problemName].snippet = s;
+        if (!combined[s.problemName].snippet) combined[s.problemName].snippet = s;
       });
       notes.forEach(n => {
         if (!combined[n.problemName]) combined[n.problemName] = {};
-        combined[n.problemName].note = n;
+        if (!combined[n.problemName].note) combined[n.problemName].note = n;
       });
 
       setSolutions(Object.entries(combined).map(([name, data]) => ({
@@ -167,7 +191,17 @@ export default function MySolutionsTab({ showToast, user }) {
       const titleSlug = extractTitleSlug(problemInput);
       const response = await authPost('/leetcode/problem', { titleSlug });
       setProblemData(response.data);
-      showToast('Problem loaded!', 'success');
+
+      // If this problem is already saved, edit that record rather than adding
+      // a second one. Duplicates were being created silently, and only one of
+      // them was ever visible in the list.
+      const existing = solutions.find((s) => s.problemName === response.data.title);
+      if (existing) {
+        await loadIntoForm(existing);
+        showToast('You already saved this one — loaded it for editing.', 'info');
+      } else {
+        showToast('Problem loaded!', 'success');
+      }
     } catch (error) {
       showToast('Problem not found', 'error');
       setProblemData(null);
@@ -178,8 +212,8 @@ export default function MySolutionsTab({ showToast, user }) {
 
   const handleSaveSolution = async () => {
     if (!problemData) return;
-    if (!solutionData.code.trim() && !solutionData.notes.trim()) {
-      showToast('Add some code or notes before saving', 'error');
+    if (!solutionData.code.trim() && !solutionData.notes.trim() && photos.length === 0) {
+      showToast('Add some code, notes or a photo before saving', 'error');
       return;
     }
     const topics = (problemData.topicTags || []).map(t => t.name);
@@ -202,13 +236,17 @@ export default function MySolutionsTab({ showToast, user }) {
         }
       }
 
-      if (solutionData.notes.trim()) {
+      // A note is worth saving if it has text OR photos.
+      if (solutionData.notes.trim() || photos.length > 0) {
         const noteData = {
           problemName: problemData.title,
           difficulty: problemData.difficulty,
-          content: solutionData.notes,
+          // The model requires content, so a photo-only note gets a stand-in.
+          content: solutionData.notes.trim() || '(handwritten notes attached)',
           personalRating: solutionData.personalRating,
-          topics
+          topics,
+          // Existing photos go back as bare ids so their bytes aren't re-sent.
+          images: photos.map((p) => (p._id ? { _id: p._id } : p))
         };
         if (editingNoteId) {
           await authPut(`/notes/${editingNoteId}`, noteData);
@@ -227,6 +265,12 @@ export default function MySolutionsTab({ showToast, user }) {
   };
 
   const handleView = async (solution) => {
+    setViewingPhotos([]);
+    if (solution.note?._id && solution.note.images?.length) {
+      authGet(`/notes/${solution.note._id}/images`)
+        .then((res) => setViewingPhotos(res.data.images || []))
+        .catch(() => setViewingPhotos([]));
+    }
     try {
       const titleSlug = solution.snippet?.link
         ? extractTitleSlug(solution.snippet.link)
@@ -238,6 +282,33 @@ export default function MySolutionsTab({ showToast, user }) {
     }
     setViewTab(solution.snippet ? 'code' : 'notes');
     setShowViewModal(true);
+  };
+
+  /** Populate the form from an existing saved solution. */
+  const loadIntoForm = async (solution) => {
+    setSolutionData({
+      code: solution.snippet?.code || '',
+      language: solution.snippet?.language || 'Python',
+      runtime: solution.snippet?.runtime || '',
+      memory: solution.snippet?.memory || '',
+      notes: solution.note?.content || '',
+      personalRating: solution.note?.personalRating || 3
+    });
+    setEditingSnippetId(solution.snippet?._id || null);
+    setEditingNoteId(solution.note?._id || null);
+
+    // Carry existing photos as ids only — enough to render thumbnails and to
+    // tell the server to keep them, without shipping the bytes both ways.
+    if (solution.note?._id && solution.note.images?.length) {
+      try {
+        const res = await authGet(`/notes/${solution.note._id}/images`);
+        setPhotos(res.data.images || []);
+      } catch {
+        setPhotos([]);
+      }
+    } else {
+      setPhotos([]);
+    }
   };
 
   const handleEdit = async (solution) => {
@@ -252,16 +323,7 @@ export default function MySolutionsTab({ showToast, user }) {
       return;
     }
 
-    setSolutionData({
-      code: solution.snippet?.code || '',
-      language: solution.snippet?.language || 'Python',
-      runtime: solution.snippet?.runtime || '',
-      memory: solution.snippet?.memory || '',
-      notes: solution.note?.content || '',
-      personalRating: solution.note?.personalRating || 3
-    });
-    setEditingSnippetId(solution.snippet?._id || null);
-    setEditingNoteId(solution.note?._id || null);
+    await loadIntoForm(solution);
     setShowModal(true);
   };
 
@@ -281,12 +343,50 @@ export default function MySolutionsTab({ showToast, user }) {
     }
   };
 
+  const handleAddPhotos = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';            // let the same file be picked again
+    if (files.length === 0) return;
+
+    const room = MAX_IMAGES - photos.length;
+    if (room <= 0) {
+      setPhotoError(`You can attach at most ${MAX_IMAGES} photos.`);
+      return;
+    }
+
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const added = [];
+      for (const file of files.slice(0, room)) {
+        try {
+          added.push(await compressImage(file));
+        } catch (e) {
+          setPhotoError(e.message);
+        }
+      }
+      if (added.length) setPhotos((prev) => [...prev, ...added]);
+      if (files.length > room) {
+        setPhotoError(`Only the first ${room} photo${room === 1 ? '' : 's'} were added — the limit is ${MAX_IMAGES}.`);
+      }
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removePhoto = (idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx));
+
+  const photoSrc = (p) => (p.data ? `data:${p.mimeType};base64,${p.data}` : p.src);
+
   const resetForm = () => {
     setProblemInput('');
     setProblemData(null);
     setEditingSnippetId(null);
     setEditingNoteId(null);
     setSolutionData({ code: '', language: 'Python', runtime: '', memory: '', notes: '', personalRating: 3 });
+    setPhotos([]);
+    setPhotoError(null);
+    speech.stop();
   };
 
   const filteredSolutions = solutions.filter(sol => {
@@ -577,7 +677,21 @@ export default function MySolutionsTab({ showToast, user }) {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label>Notes</label>
+                      <div className="notes-label-row">
+                        <label>Notes</label>
+                        {speech.supported && (
+                          <button
+                            type="button"
+                            className={`dictate-btn ${speech.listening ? 'recording' : ''}`}
+                            onClick={speech.toggle}
+                            aria-pressed={speech.listening}
+                            title={speech.listening ? 'Stop dictating' : 'Dictate your notes'}
+                          >
+                            {speech.listening ? <MicOff size={13} /> : <Mic size={13} />}
+                            {speech.listening ? 'Stop' : 'Dictate'}
+                          </button>
+                        )}
+                      </div>
                       <textarea
                         className="pixel-input"
                         rows="4"
@@ -585,6 +699,78 @@ export default function MySolutionsTab({ showToast, user }) {
                         onChange={(e) => setSolutionData({...solutionData, notes: e.target.value})}
                         placeholder="Your approach, key insights, gotchas..."
                       />
+                      {speech.listening && (
+                        <div className="dictate-status">
+                          <span className="dictate-pulse" aria-hidden="true" />
+                          Listening — {speech.interim
+                            ? <em>&ldquo;{speech.interim}&rdquo;</em>
+                            : 'start speaking'}
+                        </div>
+                      )}
+                      {speech.error && <div className="dictate-error">{speech.error}</div>}
+                      {speech.supported && !speech.listening && (
+                        <p className="field-hint">
+                          Dictation is transcribed by your browser — check it before saving,
+                          it struggles with terms like &ldquo;memoization&rdquo;.
+                        </p>
+                      )}
+                      {!speech.supported && (
+                        <p className="field-hint">
+                          Dictation needs Chrome, Edge or Safari.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <div className="notes-label-row">
+                        <label>Handwritten notes</label>
+                        <span className="photo-count">{photos.length}/{MAX_IMAGES}</span>
+                      </div>
+
+                      {photos.length > 0 && (
+                        <div className="photo-grid">
+                          {photos.map((p, i) => (
+                            <div key={p._id || `new-${i}`} className="photo-thumb">
+                              <img src={photoSrc(p)} alt={`Handwritten note ${i + 1}`} />
+                              <button
+                                type="button"
+                                className="photo-remove"
+                                onClick={() => removePhoto(i)}
+                                aria-label={`Remove photo ${i + 1}`}
+                              >
+                                <X size={12} />
+                              </button>
+                              {p.bytes && <span className="photo-size">{formatBytes(p.bytes)}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        multiple
+                        onChange={handleAddPhotos}
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        className="pixel-button photo-add-btn"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={photoBusy || photos.length >= MAX_IMAGES}
+                      >
+                        {photoBusy
+                          ? <><Loader2 size={14} className="spin" /> Compressing...</>
+                          : <><Camera size={14} /> {photos.length ? 'Add another photo' : 'Add a photo'}</>}
+                      </button>
+
+                      {photoError && <div className="dictate-error">{photoError}</div>}
+                      <p className="field-hint">
+                        Snap a page of handwritten working. Photos are resized in your browser
+                        before uploading.
+                      </p>
                     </div>
                     <div className="form-group">
                       <label>Difficulty (how hard was it for you?)</label>
@@ -604,6 +790,15 @@ export default function MySolutionsTab({ showToast, user }) {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {lightbox && (
+        <div className="photo-lightbox" onClick={() => setLightbox(null)} role="dialog" aria-modal="true">
+          <button className="photo-lightbox-close" onClick={() => setLightbox(null)} aria-label="Close photo">
+            <X size={20} />
+          </button>
+          <img src={lightbox.src} alt="Handwritten note, full size" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
 
@@ -654,6 +849,12 @@ export default function MySolutionsTab({ showToast, user }) {
                   <Edit3 size={14} /> Notes
                 </button>
               )}
+              {viewingSolution.note?.images?.length > 0 && (
+                <button className={`solutions-view-tab ${viewTab === 'photos' ? 'active' : ''}`} onClick={() => setViewTab('photos')}>
+                  <ImageIcon size={14} /> Photos
+                  <span className="solutions-subtab-count">{viewingSolution.note.images.length}</span>
+                </button>
+              )}
             </div>
 
             {/* Tab Content */}
@@ -671,6 +872,34 @@ export default function MySolutionsTab({ showToast, user }) {
                   </div>
                   <div className="solutions-view-problem-body"
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content || '') }} />
+                </div>
+              )}
+
+              {viewTab === 'photos' && (
+                <div className="photo-view-grid">
+                  {viewingPhotos.length === 0 ? (
+                    <div className="empty-state"><p>Loading photos...</p></div>
+                  ) : viewingPhotos.map((p, i) => (
+                    <button
+                      key={p._id || i}
+                      type="button"
+                      className="photo-view-item"
+                      onClick={() => setLightbox(p)}
+                      aria-label={`Open photo ${i + 1} full size`}
+                    >
+                      {/* No loading="lazy": an inline data URI is already in
+                          memory, so there is nothing to defer — and an
+                          undecoded image is 0px tall under height:auto, which
+                          kept it out of view and stopped it ever loading.
+                          The intrinsic size reserves layout before decode. */}
+                      <img
+                        src={p.src}
+                        alt={`Handwritten note ${i + 1}`}
+                        width={p.width}
+                        height={p.height}
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
 

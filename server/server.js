@@ -77,6 +77,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   maxAge: 86400,
 }));
+// Notes can carry photographs of handwritten work, so they need a far larger
+// body than everything else. Mounting the permissive parser first means it
+// wins for this one path (express.json marks the body parsed and later
+// parsers no-op), while every other route keeps the tight 100kb ceiling.
+app.use('/api/notes', express.json({ limit: '6mb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ limit: '100kb', extended: false }));
 app.disable('x-powered-by');
