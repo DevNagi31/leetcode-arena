@@ -2,6 +2,14 @@ const { body, param, validationResult } = require('express-validator');
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 
+// Inline note photographs. The browser downscales before upload; these are the
+// backstop so a hand-rolled request can't park arbitrarily large blobs in the
+// database (the whole cluster is 512MB).
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGES_PER_NOTE = 4;
+const MAX_IMAGE_BASE64 = 1_000_000;   // ~730KB of binary once decoded
+const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+
 // Must stay in sync with the `educationLevel` enum on the User model and with
 // EDUCATION_LEVELS in src/utils/constants.js.
 const EDUCATION_LEVELS = [
@@ -194,6 +202,23 @@ const noteValidation = ({ optional = false } = {}) => {
       .withMessage('personalRating must be between 1 and 5'),
     body('resources').optional().isArray({ max: 50 }).withMessage('resources must be an array'),
     body('resources.*').optional().isString().isLength({ max: 500 }),
+    body('images').optional().isArray({ max: MAX_IMAGES_PER_NOTE })
+      .withMessage(`You can attach at most ${MAX_IMAGES_PER_NOTE} photos`),
+    // An existing photo is re-sent as just its _id, so the client never has to
+    // upload unchanged bytes again on an edit.
+    body('images.*._id').optional().isMongoId(),
+    body('images.*.mimeType').optional().isIn(IMAGE_MIME_TYPES)
+      .withMessage('Photos must be JPEG, PNG or WebP'),
+    body('images.*.data').optional().isString()
+      .bail()
+      .isLength({ min: 1, max: MAX_IMAGE_BASE64 })
+      .withMessage('That photo is too large — try again, it should have been compressed')
+      .bail()
+      .custom((v) => BASE64_RE.test(v))
+      .withMessage('Photo data must be base64'),
+    body('images.*.width').optional().isInt({ min: 1, max: 10000 }),
+    body('images.*.height').optional().isInt({ min: 1, max: 10000 }),
+    body('images.*.bytes').optional().isInt({ min: 0, max: MAX_IMAGE_BASE64 }),
     body('topics').optional().isArray({ max: 50 }).withMessage('topics must be an array'),
     body('topics.*').optional().isString().isLength({ max: 50 }),
   ];
@@ -201,6 +226,8 @@ const noteValidation = ({ optional = false } = {}) => {
 
 module.exports = {
   EDUCATION_LEVELS,
+  IMAGE_MIME_TYPES,
+  MAX_IMAGES_PER_NOTE,
   validate,
   objectIdParam,
   registerValidation,

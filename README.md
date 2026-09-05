@@ -289,8 +289,35 @@ and will not see the migrated rows.
 | `NODE_ENV` | prod | `production` enables the SPA, CSP and HTTPS redirect |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` | prod | Without these, codes only reach the server log |
 | `EMAIL_FROM` | prod | From address on outgoing mail |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | no | Set all three to store note photographs on Cloudinary instead of inline in MongoDB. See below |
+| `CLOUDINARY_FOLDER` | no | Upload folder; defaults to `leetcode-arena/notes` |
 | `VITE_API_URL` | no | Only when the API is on a different origin; baked in at build time |
 | `VITE_PROXY_TARGET` | no | Dev only — where `npm start` proxies `/api`; defaults to `http://localhost:5001` |
+
+### Note photographs and storage
+
+Notes can carry photographs of handwritten working. By default the images are
+downscaled in the browser (max 1600px, JPEG) and stored inline on the note
+document — no configuration, nothing to sign up for.
+
+That shares the Atlas free tier's 512MB with your user data, which is roughly
+1,700 photos in total and is served without a CDN. Once that matters, set:
+
+```
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+```
+
+New uploads then go to Cloudinary (25GB free, CDN-backed) and the note keeps
+only a URL. The backend is recorded per image, so **this is a config change,
+not a migration** — photos already stored inline keep working alongside new
+ones. If a Cloudinary upload fails the server falls back to inline storage
+rather than losing the user's photo.
+
+Dictation uses the browser's built-in SpeechRecognition, so it needs no key and
+costs nothing to run. It works in Chrome, Edge and Safari; Firefox users just
+don't see the button.
 
 ### Post-deploy checklist
 
