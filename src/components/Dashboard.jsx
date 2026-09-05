@@ -61,8 +61,11 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
     try { return !localStorage.getItem(TOUR_KEY); } catch { return false; }
   });
 
-  const endTour = () => {
+  const endTour = (reason) => {
     setShowTour(false);
+    // A tour that ended because it had nothing to point at was never actually
+    // seen — leave the flag unset so it gets another chance next visit.
+    if (reason === 'unavailable') return;
     try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode */ }
   };
 
