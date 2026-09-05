@@ -250,17 +250,17 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
             <div className="solved-diff-row">
               <span className="solved-diff-dot" style={{ background: '#22c55e' }} />
               <span className="solved-diff-name">Easy</span>
-              <strong className="solved-diff-count" style={{ color: '#22c55e' }}>{analytics.easy}</strong>
+              <strong className="solved-diff-count" style={{ color: 'var(--diff-easy)' }}>{analytics.easy}</strong>
             </div>
             <div className="solved-diff-row">
               <span className="solved-diff-dot" style={{ background: '#eab308' }} />
               <span className="solved-diff-name">Medium</span>
-              <strong className="solved-diff-count" style={{ color: '#eab308' }}>{analytics.medium}</strong>
+              <strong className="solved-diff-count" style={{ color: 'var(--diff-medium)' }}>{analytics.medium}</strong>
             </div>
             <div className="solved-diff-row">
               <span className="solved-diff-dot" style={{ background: '#ef4444' }} />
               <span className="solved-diff-name">Hard</span>
-              <strong className="solved-diff-count" style={{ color: '#ef4444' }}>{analytics.hard}</strong>
+              <strong className="solved-diff-count" style={{ color: 'var(--diff-hard)' }}>{analytics.hard}</strong>
             </div>
           </div>
         </div>
@@ -300,9 +300,9 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
       {/* === Activity Heatmap === */}
       <div className="section-card">
         <div className="heatmap-header">
-          <h3 className="section-title" style={{ margin: 0 }}>
+          <h2 className="section-title" style={{ margin: 0 }}>
             <strong>{analytics.totalSubmissions}</strong> submissions this year
-          </h3>
+          </h2>
           <div className="heatmap-header-stats">
             <span>Active days: <strong>{analytics.totalActiveDays}</strong></span>
             <span>Max streak: <strong>{analytics.longestStreak}</strong></span>
@@ -314,7 +314,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
       {/* === This Week + Weekly Goal === */}
       <div className="analytics-two-col">
         <div className="section-card">
-          <h3 className="section-title"><Calendar size={18} /> This Week</h3>
+          <h2 className="section-title"><Calendar size={18} /> This Week</h2>
           <div className="week-grid">
             {analytics.thisWeekActivity.map(({ day, solved, active }) => (
               <div key={day} className={`week-day ${active ? 'active' : ''}`}>
@@ -326,14 +326,14 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
           </div>
         </div>
         <div className="section-card">
-          <h3 className="section-title">
+          <h2 className="section-title">
             <Target size={18} /> Weekly Goal
             {onToggleEditGoal && (
               <button className="link-button" style={{ marginLeft: 'auto', fontSize: '12px' }} onClick={onToggleEditGoal}>
                 {editingGoal ? 'Cancel' : 'Edit'}
               </button>
             )}
-          </h3>
+          </h2>
           {editingGoal ? (
             <div className="goal-edit-inline">
               <input
@@ -369,7 +369,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
               </div>
               <div className="goal-status-text">
                 {weeklyPct >= 100
-                  ? <span style={{ color: '#22c55e', fontWeight: 600 }}>Goal achieved!</span>
+                  ? <span style={{ color: 'var(--diff-easy)', fontWeight: 600 }}>Goal achieved!</span>
                   : <span>{weeklyTarget - weeklyProgress} more to go</span>}
               </div>
             </>
@@ -379,14 +379,14 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
 
       {/* === Weekly Activity Chart === */}
       <div className="section-card">
-        <h3 className="section-title">
+        <h2 className="section-title">
           <BarChart3 size={18} /> Weekly Activity
           <span className="analytics-trend-pill" data-trend={analytics.velocityTrend}>
             {analytics.velocityTrend === 'improving' && <><TrendingUp size={13} /> up</>}
             {analytics.velocityTrend === 'declining' && <><TrendingDown size={13} /> down</>}
             {analytics.velocityTrend === 'steady' && <><Minus size={13} /> steady</>}
           </span>
-        </h3>
+        </h2>
         <div className="analytics-bar-chart">
           {analytics.weeklyData.map((week, i) => (
             <div key={i} className="analytics-bar-col">
@@ -409,7 +409,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
       {/* === Consistency + Difficulty Trend === */}
       <div className="analytics-two-col">
         <div className="section-card">
-          <h3 className="section-title"><Activity size={18} /> Consistency</h3>
+          <h2 className="section-title"><Activity size={18} /> Consistency</h2>
           <div className="analytics-consistency-grid">
             <div className="analytics-consistency-grade" style={{ color: analytics.consistencyColor }}>
               {analytics.consistencyGrade}
@@ -435,7 +435,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
         </div>
 
         <div className="section-card">
-          <h3 className="section-title"><TrendingUp size={18} /> Difficulty Trend</h3>
+          <h2 className="section-title"><TrendingUp size={18} /> Difficulty Trend</h2>
           <div className="analytics-diff-trend">
             <div className="analytics-diff-trend-comparison">
               <div className="analytics-diff-period">
@@ -445,9 +445,9 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
               </div>
               <div className="analytics-diff-arrow">
                 {analytics.difficultyShift > 3
-                  ? <TrendingUp size={20} style={{ color: '#22c55e' }} />
+                  ? <TrendingUp size={20} style={{ color: 'var(--diff-easy)' }} />
                   : analytics.difficultyShift < -3
-                    ? <TrendingDown size={20} style={{ color: '#ef4444' }} />
+                    ? <TrendingDown size={20} style={{ color: 'var(--diff-hard)' }} />
                     : <Minus size={20} style={{ color: 'var(--text-tertiary)' }} />}
               </div>
               <div className="analytics-diff-period">
@@ -473,7 +473,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
 
       {/* === Best Days to Code === */}
       <div className="section-card">
-        <h3 className="section-title"><Calendar size={18} /> Most Productive Days</h3>
+        <h2 className="section-title"><Calendar size={18} /> Most Productive Days</h2>
         <div className="analytics-day-chart">
           {analytics.dayStats.map((d) => (
             <div key={d.name} className={`analytics-day-col ${d.name === analytics.bestDayOfWeek.name ? 'best' : ''}`}>
@@ -494,7 +494,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
       <div className="analytics-two-col">
         {analytics.projections.length > 0 && (
           <div className="section-card">
-            <h3 className="section-title"><Rocket size={18} /> Next Milestones</h3>
+            <h2 className="section-title"><Rocket size={18} /> Next Milestones</h2>
             <div className="analytics-projections">
               {analytics.projections.slice(0, 3).map(({ milestone, daysNeeded, targetDate }) => (
                 <div key={milestone} className="analytics-projection-row">
@@ -523,7 +523,7 @@ export default function AnalyticsTab({ user, weeklyGoal, editingGoal, weeklyGoal
         )}
 
         <div className="section-card">
-          <h3 className="section-title"><Award size={18} /> Personal Records</h3>
+          <h2 className="section-title"><Award size={18} /> Personal Records</h2>
           <div className="analytics-records">
             <div className="analytics-record">
               <Zap size={18} />

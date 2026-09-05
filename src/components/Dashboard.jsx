@@ -131,25 +131,27 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
         )}
       </div>
 
-      <div className="dashboard-header">
+      <header className="dashboard-header">
         <div className="user-info">
           <RankBadge tier={user.tier || calculateTier(user.score)} size="large" showProgress />
           <div>
-            <h2>{user.username}</h2>
+            {/* Every signed-in view previously had no h1 at all, so screen
+                readers had nothing to anchor the page on. */}
+            <h1>{user.username}</h1>
             <p><Globe size={12} />{user.country}</p>
             <p><Building2 size={12} />{user.institutionName} • {user.year}</p>
             <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>LeetCode: {user.leetcodeUsername}</p>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="dashboard-tabs">
+      <nav className="dashboard-tabs" aria-label="Dashboard sections">
         <button data-tour="overview" className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}><BarChart3 size={16} /> Overview</button>
         <button data-tour="analytics" className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}><Activity size={16} /> Analytics</button>
         <button data-tour="solutions" className={`tab-btn ${activeTab === 'solutions' ? 'active' : ''}`} onClick={() => setActiveTab('solutions')}><Code size={16} /> My Solutions</button>
         <button data-tour="friends" className={`tab-btn ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}><Users size={16} /> Friends</button>
         <button data-tour="leaderboard" className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}><Trophy size={16} /> Leaderboard</button>
-      </div>
+      </nav>
 
       {activeTab === 'overview' && (
         <>
@@ -160,21 +162,21 @@ export default function Dashboard({ user, setUser, onNavigate, onLogout, showToa
               <div className="stat-label">TOTAL SOLVED</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value" style={{ color: '#22c55e' }}>{user.easy || 0}</div>
+              <div className="stat-value" style={{ color: 'var(--diff-easy)' }}>{user.easy || 0}</div>
               <div className="stat-label">EASY</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value" style={{ color: '#eab308' }}>{user.medium || 0}</div>
+              <div className="stat-value" style={{ color: 'var(--diff-medium)' }}>{user.medium || 0}</div>
               <div className="stat-label">MEDIUM</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value" style={{ color: '#ef4444' }}>{user.hard || 0}</div>
+              <div className="stat-value" style={{ color: 'var(--diff-hard)' }}>{user.hard || 0}</div>
               <div className="stat-label">HARD</div>
             </div>
           </div>
 
           <div className="section-card">
-            <h3 className="section-title"><Trophy size={18} /> Your Rankings</h3>
+            <h2 className="section-title"><Trophy size={18} /> Your Rankings</h2>
             <div className="rankings-grid">
               <div className="ranking-item"><Globe size={16} /><span>Global</span><strong>#{user.rank || '-'}</strong></div>
               <div className="ranking-item"><Globe size={16} /><span>{user.country}</span><strong>{user.countryRank ? `#${user.countryRank}` : '-'}</strong></div>

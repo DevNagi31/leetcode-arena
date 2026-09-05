@@ -42,15 +42,15 @@ export default function FriendProfileModal({ friend, onClose, onMessage, onRemov
             <div className="stat-label">TOTAL SOLVED</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: '#4CAF50' }}>{friend.easy || 0}</div>
+            <div className="stat-value" style={{ color: 'var(--diff-easy)' }}>{friend.easy || 0}</div>
             <div className="stat-label">EASY</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: '#FF9800' }}>{friend.medium || 0}</div>
+            <div className="stat-value" style={{ color: 'var(--diff-medium)' }}>{friend.medium || 0}</div>
             <div className="stat-label">MEDIUM</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: '#F44336' }}>{friend.hard || 0}</div>
+            <div className="stat-value" style={{ color: 'var(--diff-hard)' }}>{friend.hard || 0}</div>
             <div className="stat-label">HARD</div>
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function FriendProfileModal({ friend, onClose, onMessage, onRemov
         </div>
 
         <div className="section-card" style={{ marginTop: '20px' }}>
-          <h3 className="section-title"><Calendar size={18} /> This Week</h3>
+          <h2 className="section-title"><Calendar size={18} /> This Week</h2>
           <div className="week-grid">
             {thisWeekActivity.map(({ day, solved, active }) => (
               <div key={day} className={`week-day ${active ? 'active' : ''}`}>
@@ -88,7 +88,7 @@ export default function FriendProfileModal({ friend, onClose, onMessage, onRemov
         </div>
 
         <div className="section-card" style={{ marginTop: '20px' }}>
-          <h3 className="section-title"><Trophy size={18} /> Rankings</h3>
+          <h2 className="section-title"><Trophy size={18} /> Rankings</h2>
           <div className="rankings-grid">
             <div className="ranking-item">
               <Globe size={16} />

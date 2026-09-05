@@ -5,7 +5,7 @@ export default function AuthChoice({ onNavigate }) {
   return (
     <div className="form-container">
       <button className="back-button" onClick={() => onNavigate('landing')}>← BACK</button>
-      <h2 className="form-title">JOIN CODE MANAGER</h2>
+      <h1 className="form-title">JOIN CODE MANAGER</h1>
       <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>
         Track your coding journey and compete with peers
       </p>

@@ -132,13 +132,25 @@ function App() {
 
   return (
     <div className="game-container">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       {view !== 'landing' && <CursorGlow />}
       <PageTransition active={transitioning} />
-      <div style={{ position: 'fixed', top: 0, right: 0, zIndex: 10000 }}>
+      {/*
+        Toasts carry the only confirmation of a save, and the only report of a
+        failure. Without a live region a screen-reader user never learns either
+        happened. "polite" so it waits for a pause rather than interrupting.
+      */}
+      <div
+        style={{ position: 'fixed', top: 0, right: 0, zIndex: 10000 }}
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {toasts.map(toast => (
           <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
         ))}
       </div>
+      <main id="main-content">
       {view === 'landing' && <LandingPage onNavigate={changeView} />}
       {view === 'auth-choice' && <AuthChoice onNavigate={changeView} />}
       {view === 'login' && <Login onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} showToast={showToast} />}
@@ -148,6 +160,7 @@ function App() {
       {view === 'dashboard' && currentUser && needsVerification && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} />}
       {view === 'dashboard' && currentUser && !needsVerification && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} dark={dark} setDark={setDark} />}
       {!isValidView && <NotFound onNavigate={changeView} />}
+      </main>
     </div>
   );
 }

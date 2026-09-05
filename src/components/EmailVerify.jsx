@@ -42,7 +42,7 @@ export default function EmailVerify({ onNavigate, currentUser, setCurrentUser, o
 
   return (
     <div className="form-container">
-      <h2 className="form-title">VERIFY EMAIL</h2>
+      <h1 className="form-title">VERIFY EMAIL</h1>
       <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px', lineHeight: '1.6' }}>
         We sent a 6-digit code to{' '}
         <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.email}</strong>.
@@ -51,8 +51,10 @@ export default function EmailVerify({ onNavigate, currentUser, setCurrentUser, o
       {error && <div className="error-message">{error}</div>}
       <form className="pixel-form" onSubmit={handleVerify}>
         <div className="form-group">
-          <label>VERIFICATION CODE</label>
-          <input type="text" inputMode="numeric" className="pixel-input" placeholder="Enter 6-digit code"
+          <label htmlFor="verify-code">VERIFICATION CODE</label>
+          <input type="text" id="verify-code" name="code" inputMode="numeric"
+            autoComplete="one-time-code"
+            className="pixel-input" placeholder="Enter 6-digit code"
             value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required />
         </div>
         <button type="submit" className="pixel-button primary full-width" disabled={loading || code.length !== 6}>

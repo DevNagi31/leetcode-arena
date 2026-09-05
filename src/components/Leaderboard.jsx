@@ -131,20 +131,21 @@ export default function Leaderboard({ users, setUsers, onNavigate, currentUser, 
             <div className="filter-section">
               <div className="search-bar">
                 <Search size={18} />
-                <input type="text" className="search-input pixel-input" placeholder="Search..."
+                <input type="search" id="lb-search" name="search" aria-label="Search the leaderboard"
+                  className="search-input pixel-input" placeholder="Search..."
                   value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
               <div className="college-filter">
-                <label>Country:</label>
-                <select value={selectedCountry} onChange={(e) => { setSelectedCountry(e.target.value); setSelectedInstitution('all'); }}>
+                <label htmlFor="lb-country">Country:</label>
+                <select id="lb-country" name="country" value={selectedCountry} onChange={(e) => { setSelectedCountry(e.target.value); setSelectedInstitution('all'); }}>
                   <option value="all">All</option>
                   {countries.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               {selectedCountry !== 'all' && (
                 <div className="college-filter">
-                  <label>Institution:</label>
-                  <select value={selectedInstitution} onChange={(e) => setSelectedInstitution(e.target.value)}>
+                  <label htmlFor="lb-institution">Institution:</label>
+                  <select id="lb-institution" name="institution" value={selectedInstitution} onChange={(e) => setSelectedInstitution(e.target.value)}>
                     <option value="all">All</option>
                     {institutions.map(inst => <option key={inst} value={inst}>{inst}</option>)}
                   </select>
@@ -157,7 +158,8 @@ export default function Leaderboard({ users, setUsers, onNavigate, currentUser, 
             <div className="filter-section">
               <div className="search-bar">
                 <Search size={18} />
-                <input type="text" className="search-input pixel-input" placeholder="Search friends..."
+                <input type="search" id="lb-search-friends" name="search" aria-label="Search friends"
+                  className="search-input pixel-input" placeholder="Search friends..."
                   value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
             </div>
