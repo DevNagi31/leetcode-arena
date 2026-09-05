@@ -3,8 +3,10 @@ import {
   Trophy, User, Globe, Building2, Calendar, Flame,
   MessageCircle, X as XIcon
 } from 'lucide-react';
+import useDialog from '../utils/useDialog';
 
 export default function FriendProfileModal({ friend, onClose, onMessage, onRemove }) {
+  const dialog = useDialog({ onClose, labelledBy: 'friend-profile-title' });
   const today = new Date();
   const startOfWeek = new Date();
   startOfWeek.setDate(today.getDate() - today.getDay());
@@ -20,11 +22,11 @@ export default function FriendProfileModal({ friend, onClose, onMessage, onRemov
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()} {...dialog.props}>
         <div className="profile-modal-header">
           <div className="friend-avatar-large"><User size={40} /></div>
           <div style={{ flex: 1 }}>
-            <h2>{friend.username}</h2>
+            <h2 id="friend-profile-title">{friend.username}</h2>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '13px', marginTop: '4px' }}>
               <Globe size={12} style={{ display: 'inline', marginRight: '4px' }} />
               {friend.country} • {friend.institutionName}

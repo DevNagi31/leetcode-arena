@@ -5,20 +5,60 @@ import { CardSkeleton } from './LoadingSkeleton';
 import { authGet, authPost, authPut, authDelete } from '../utils/api';
 import { compressImage, formatBytes, MAX_IMAGES } from '../utils/image';
 import useSpeechRecognition from '../utils/useSpeechRecognition';
+import useDialog from '../utils/useDialog';
+import ConfirmDialog from './ConfirmDialog';
 
 const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++', 'C', 'Go', 'Rust', 'TypeScript', 'Ruby', 'Swift', 'Kotlin', 'Other'];
 const RATING_LABELS = ['', 'Trivial', 'Easy', 'Medium', 'Hard', 'Brutal'];
 
-function RatingStars({ value, onChange }) {
+/**
+ * Wrapper that gives any of this file's modals focus management, Escape, a
+ * focus trap and a scroll lock. Kept as a component because hooks can't be
+ * called conditionally, and these render behind `&&` guards.
+ */
+function Dialog({ onClose, label, labelledBy, className, overlayClass = 'modal-overlay', children }) {
+  const dialog = useDialog({ onClose, label, labelledBy });
   return (
-    <div className="solutions-rating">
+    <div className={overlayClass} onClick={onClose}>
+      <div className={className} onClick={(e) => e.stopPropagation()} {...dialog.props}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function RatingStars({ value, onChange }) {
+  // Read-only stars are a picture of a value, not controls. Rendering them as
+  // buttons put six unnamed, focusable elements in front of keyboard users on
+  // every card. Interactive stars stay buttons, and get real names.
+  const readOnly = !onChange;
+
+  if (readOnly) {
+    return (
+      <div className="solutions-rating" role="img"
+        aria-label={`Difficulty ${value} out of 5${RATING_LABELS[value] ? ` — ${RATING_LABELS[value]}` : ''}`}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <span key={i} className={`solutions-star ${i <= value ? 'active' : ''}`} aria-hidden="true">
+            <Star size={16} fill={i <= value ? 'currentColor' : 'none'} />
+          </span>
+        ))}
+        <span className="solutions-rating-label">{RATING_LABELS[value] || ''}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="solutions-rating" role="radiogroup" aria-label="How hard was it for you?">
       {[1, 2, 3, 4, 5].map(i => (
         <button
           key={i}
           type="button"
+          role="radio"
+          aria-checked={i === value}
+          aria-label={`${i} out of 5${RATING_LABELS[i] ? ` — ${RATING_LABELS[i]}` : ''}`}
           className={`solutions-star ${i <= value ? 'active' : ''}`}
-          onClick={() => onChange?.(i)}
-          style={{ cursor: onChange ? 'pointer' : 'default' }}
+          onClick={() => onChange(i)}
+          style={{ cursor: 'pointer' }}
         >
           <Star size={16} fill={i <= value ? 'currentColor' : 'none'} />
         </button>
@@ -70,6 +110,7 @@ export default function MySolutionsTab({ showToast, user }) {
   const [photoError, setPhotoError] = useState(null);
   const [viewingPhotos, setViewingPhotos] = useState([]);
   const [lightbox, setLightbox] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const fileInputRef = useRef(null);
 
   // Dictated phrases are appended to the notes field so they can be corrected
@@ -336,7 +377,6 @@ export default function MySolutionsTab({ showToast, user }) {
   };
 
   const handleDelete = async (solution) => {
-    if (!window.confirm(`Delete solution for "${solution.problemName}"?`)) return;
     try {
       if (solution.snippet) {
         await authDelete(`/snippets/${solution.snippet._id}`);
@@ -348,6 +388,8 @@ export default function MySolutionsTab({ showToast, user }) {
       fetchSolutions();
     } catch (e) {
       showToast('Failed to delete', 'error');
+    } finally {
+      setPendingDelete(null);
     }
   };
 
@@ -416,6 +458,21 @@ export default function MySolutionsTab({ showToast, user }) {
   };
 
   const photoSrc = (p) => (p.data ? `data:${p.mimeType};base64,${p.data}` : p.src);
+
+  /**
+   * LeetCode's problem HTML ships <pre> example blocks that overflow. A
+   * scrollable region that can't be focused is unreachable by keyboard, so
+   * give each one a tab stop once the sanitized markup is in the DOM.
+   */
+  const makeScrollablesFocusable = useCallback((node) => {
+    if (!node) return;
+    node.querySelectorAll('pre, table').forEach((el) => {
+      if (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) {
+        el.setAttribute('tabindex', '0');
+        if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', 'Example, scrollable');
+      }
+    });
+  }, []);
 
   const resetForm = () => {
     setProblemInput('');
@@ -551,7 +608,10 @@ export default function MySolutionsTab({ showToast, user }) {
           />
         </div>
         <div className="solutions-filters">
+          <label className="sr-only" htmlFor="solutions-difficulty">Filter by difficulty</label>
           <select
+            id="solutions-difficulty"
+            name="difficulty"
             className="solutions-filter-select"
             value={filterDifficulty}
             onChange={(e) => setFilterDifficulty(e.target.value)}
@@ -629,7 +689,7 @@ export default function MySolutionsTab({ showToast, user }) {
                   <button className="solutions-action-btn" onClick={() => handleEdit(sol)} title="Edit">
                     <Edit3 size={16} />
                   </button>
-                  <button className="solutions-action-btn solutions-action-danger" onClick={() => handleDelete(sol)} title="Delete">
+                  <button className="solutions-action-btn solutions-action-danger" onClick={() => setPendingDelete(sol)} title="Delete">
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -645,11 +705,14 @@ export default function MySolutionsTab({ showToast, user }) {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
-          <div className="modal-content solutions-modal" onClick={(e) => e.stopPropagation()}>
+        <Dialog
+          onClose={() => { setShowModal(false); resetForm(); }}
+          labelledBy="solution-editor-title"
+          className="modal-content solutions-modal"
+        >
             <div className="solutions-modal-header">
-              <h2>{editingSnippetId || editingNoteId ? 'Edit Solution' : 'New Solution'}</h2>
-              <button className="solutions-close-btn" onClick={() => { setShowModal(false); resetForm(); }}>
+              <h2 id="solution-editor-title">{editingSnippetId || editingNoteId ? 'Edit Solution' : 'New Solution'}</h2>
+              <button className="solutions-close-btn" aria-label="Close editor" onClick={() => { setShowModal(false); resetForm(); }}>
                 <X size={18} />
               </button>
             </div>
@@ -684,21 +747,24 @@ export default function MySolutionsTab({ showToast, user }) {
                       </div>
                     </div>
                     <div className="solutions-problem-content"
+                      ref={makeScrollablesFocusable}
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problemData.content || '') }} />
                   </div>
 
                   {/* Solution form on right */}
                   <div className="solutions-edit-form">
                     <div className="form-group">
-                      <label>Language</label>
-                      <select className="pixel-input" value={solutionData.language}
+                      <label htmlFor="solution-language">Language</label>
+                      <select id="solution-language" name="language" className="pixel-input" value={solutionData.language}
                         onChange={(e) => setSolutionData({...solutionData, language: e.target.value})}>
                         {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Your Code</label>
+                      <label htmlFor="solution-code">Your Code</label>
                       <textarea
+                        id="solution-code"
+                        name="code"
                         className="pixel-input solutions-code-textarea"
                         rows="12"
                         value={solutionData.code}
@@ -709,19 +775,19 @@ export default function MySolutionsTab({ showToast, user }) {
                     </div>
                     <div className="solutions-perf-row">
                       <div className="form-group">
-                        <label>Runtime</label>
-                        <input className="pixel-input" placeholder="e.g. 45ms" value={solutionData.runtime}
+                        <label htmlFor="solution-runtime">Runtime</label>
+                        <input id="solution-runtime" name="runtime" className="pixel-input" placeholder="e.g. 45ms" value={solutionData.runtime}
                           onChange={(e) => setSolutionData({...solutionData, runtime: e.target.value})} />
                       </div>
                       <div className="form-group">
-                        <label>Memory</label>
-                        <input className="pixel-input" placeholder="e.g. 14MB" value={solutionData.memory}
+                        <label htmlFor="solution-memory">Memory</label>
+                        <input id="solution-memory" name="memory" className="pixel-input" placeholder="e.g. 14MB" value={solutionData.memory}
                           onChange={(e) => setSolutionData({...solutionData, memory: e.target.value})} />
                       </div>
                     </div>
                     <div className="form-group">
                       <div className="notes-label-row">
-                        <label>Notes</label>
+                        <label htmlFor="solution-notes">Notes</label>
                         {speech.supported && (
                           <button
                             type="button"
@@ -736,6 +802,8 @@ export default function MySolutionsTab({ showToast, user }) {
                         )}
                       </div>
                       <textarea
+                        id="solution-notes"
+                        name="notes"
                         className="pixel-input"
                         rows="4"
                         value={solutionData.notes}
@@ -832,26 +900,37 @@ export default function MySolutionsTab({ showToast, user }) {
                 </button>
               </div>
             )}
-          </div>
-        </div>
+        </Dialog>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          message={`Delete your saved solution for "${pendingDelete.problemName}"? This removes the code, notes and any photos.`}
+          onConfirm={() => handleDelete(pendingDelete)}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
 
       {lightbox && (
-        <div className="photo-lightbox" onClick={() => setLightbox(null)} role="dialog" aria-modal="true">
+        <Dialog onClose={() => setLightbox(null)} label="Handwritten note, full size"
+          className="photo-lightbox-inner" overlayClass="photo-lightbox">
           <button className="photo-lightbox-close" onClick={() => setLightbox(null)} aria-label="Close photo">
             <X size={20} />
           </button>
-          <img src={lightbox.src} alt="Handwritten note, full size" onClick={(e) => e.stopPropagation()} />
-        </div>
+          <img src={lightbox.src} alt="Handwritten note, full size" />
+        </Dialog>
       )}
 
       {/* View Modal */}
       {showViewModal && viewingSolution && (
-        <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
-          <div className="modal-content solutions-view-modal" onClick={(e) => e.stopPropagation()}>
+        <Dialog
+          onClose={() => setShowViewModal(false)}
+          labelledBy="solution-view-title"
+          className="modal-content solutions-view-modal"
+        >
             <div className="solutions-view-header">
               <div>
-                <h2 className="solutions-view-title">{viewingSolution.problemName}</h2>
+                <h2 className="solutions-view-title" id="solution-view-title">{viewingSolution.problemName}</h2>
                 <div className="solutions-view-badges">
                   {viewingSolution.difficulty && (
                     <span className={`difficulty-badge ${viewingSolution.difficulty.toLowerCase()}`}>{viewingSolution.difficulty}</span>
@@ -870,7 +949,7 @@ export default function MySolutionsTab({ showToast, user }) {
                   )}
                 </div>
               </div>
-              <button className="solutions-close-btn" onClick={() => setShowViewModal(false)}>
+              <button className="solutions-close-btn" aria-label="Close solution" onClick={() => setShowViewModal(false)}>
                 <X size={18} />
               </button>
             </div>
@@ -902,7 +981,11 @@ export default function MySolutionsTab({ showToast, user }) {
               ref={splitRef}
               style={{ '--split': `${splitPct}%` }}
             >
-              <section className={`split-pane ${viewPane === 'problem' ? 'pane-active' : ''}`}>
+              <section
+                className={`split-pane ${viewPane === 'problem' ? 'pane-active' : ''}`}
+                tabIndex={0}
+                aria-label="Problem description"
+              >
                 <h3 className="split-pane-title">Problem</h3>
                 {viewingSolution.problemDetails ? (
                   <>
@@ -913,6 +996,7 @@ export default function MySolutionsTab({ showToast, user }) {
                     </div>
                     <div
                       className="solutions-view-problem-body"
+                      ref={makeScrollablesFocusable}
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(viewingSolution.problemDetails.content || '') }}
                     />
                   </>
@@ -939,14 +1023,18 @@ export default function MySolutionsTab({ showToast, user }) {
                 onPointerDown={startDrag}
               />
 
-              <section className={`split-pane ${viewPane === 'solution' ? 'pane-active' : ''}`}>
+              <section
+                className={`split-pane ${viewPane === 'solution' ? 'pane-active' : ''}`}
+                tabIndex={0}
+                aria-label="Your saved solution"
+              >
                 {viewingSolution.snippet && (
                   <>
                     <h3 className="split-pane-title">
                       <Code size={13} /> Your code
                       <span className="split-pane-meta">{viewingSolution.snippet.language}</span>
                     </h3>
-                    <pre className="solutions-view-code"><code>{viewingSolution.snippet.code}</code></pre>
+                    <pre className="solutions-view-code" tabIndex={0} aria-label="Your code"><code>{viewingSolution.snippet.code}</code></pre>
                   </>
                 )}
 
@@ -1011,8 +1099,7 @@ export default function MySolutionsTab({ showToast, user }) {
                 )}
               </section>
             </div>
-          </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

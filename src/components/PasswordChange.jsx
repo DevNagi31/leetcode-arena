@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, X } from 'lucide-react';
 import { checkPasswordStrength } from '../utils/constants';
+import useDialog from '../utils/useDialog';
 import './ProfileEdit.css';
 
 // Mirrors the backend rule. The strength score is a rough UX signal and does
@@ -10,6 +11,7 @@ const PASSWORD_HINT = 'At least 8 characters, with an uppercase letter, a lowerc
 const isStrongPassword = (pw) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pw);
 
 const PasswordChange = ({ onSave, onCancel, showToast }) => {
+  const dialog = useDialog({ onClose: onCancel, labelledBy: 'password-change-title' });
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -59,8 +61,8 @@ const PasswordChange = ({ onSave, onCancel, showToast }) => {
 
   return (
     <div className="profile-edit-overlay" onClick={onCancel}>
-      <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">CHANGE PASSWORD</h2>
+      <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()} {...dialog.props}>
+        <h2 className="modal-title" id="password-change-title">CHANGE PASSWORD</h2>
         <form className="edit-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="pc-current">CURRENT PASSWORD</label>

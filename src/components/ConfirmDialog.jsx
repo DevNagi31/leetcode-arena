@@ -1,14 +1,16 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import useDialog from '../utils/useDialog';
 import './ProfileEdit.css';
 
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => {
+  const dialog = useDialog({ onClose: onCancel, labelledBy: 'confirm-title' });
   return (
     <div className="profile-edit-overlay" onClick={onCancel}>
-      <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+      <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }} {...dialog.props}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <AlertTriangle size={48} strokeWidth={2} style={{ marginBottom: '16px' }} />
-          <h2 className="modal-title" style={{ marginBottom: '16px' }}>CONFIRM</h2>
+          <h2 className="modal-title" id="confirm-title" style={{ marginBottom: '16px' }}>CONFIRM</h2>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: '1.6' }}>
             {message}
           </p>
