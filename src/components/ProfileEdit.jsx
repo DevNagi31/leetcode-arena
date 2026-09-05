@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Save, X } from 'lucide-react';
 import { EDUCATION_LEVELS, YEAR_OPTIONS } from '../utils/constants';
+import useDialog from '../utils/useDialog';
 import './ProfileEdit.css';
 
 const ProfileEdit = ({ user, onSave, onCancel, showToast }) => {
+  const dialog = useDialog({ onClose: onCancel, labelledBy: 'profile-edit-title' });
   const [formData, setFormData] = useState({
     institutionName: user.institutionName || '',
     educationLevel: user.educationLevel || '',
@@ -26,8 +28,8 @@ const ProfileEdit = ({ user, onSave, onCancel, showToast }) => {
 
   return (
     <div className="profile-edit-overlay" onClick={onCancel}>
-      <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">EDIT PROFILE</h2>
+      <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()} {...dialog.props}>
+        <h2 className="modal-title" id="profile-edit-title">EDIT PROFILE</h2>
         <form className="edit-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="pe-institution">INSTITUTION</label>

@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import { User, MessageCircle, Send, X as XIcon } from 'lucide-react';
 import { authGet, authPost, SOCKET_URL } from '../utils/api';
+import useDialog from '../utils/useDialog';
 
 export default function ChatModal({ friend, currentUser, onClose, showToast }) {
+  const dialog = useDialog({ onClose, labelledBy: 'chat-title' });
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState(null);
@@ -145,11 +147,11 @@ export default function ChatModal({ friend, currentUser, onClose, showToast }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content chat-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content chat-modal" onClick={(e) => e.stopPropagation()} {...dialog.props}>
         <div className="chat-header">
           <div className="chat-avatar"><User size={20} /></div>
           <div style={{ flex: 1 }}>
-            <h3>{friend.username}</h3>
+            <h2 id="chat-title">{friend.username}</h2>
             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
               {friend.country} • {friend.institutionName?.split(' ').slice(0, 3).join(' ')}
             </p>
