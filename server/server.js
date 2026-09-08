@@ -110,7 +110,7 @@ mongoose.connection.on('disconnected', () => {
 // Health check
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  const { isEmailConfigured } = require('./services/email');
+  const { isEmailConfigured, missingEmailVars } = require('./services/email');
   res.json({
     status: 'ok',
     db: dbState,
@@ -119,6 +119,10 @@ app.get('/api/health', (req, res) => {
     // code never leaves the box — which looks identical to "it went to spam"
     // from the outside.
     email: isEmailConfigured ? 'configured' : 'not configured',
+    // Names only, never values — turns "not configured" into something
+    // actionable when a variable is missing or misspelled.
+    ...(isEmailConfigured ? {} : { emailMissing: missingEmailVars() }),
+    emailFrom: process.env.EMAIL_FROM ? 'set' : 'MISSING',
     timestamp: new Date().toISOString()
   });
 });
