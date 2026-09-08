@@ -988,7 +988,7 @@ h1, h2, h3, h4,
   gap: 20px;
 }
 
-.user-info h2 {
+.user-info :is(h1, h2) {
   font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
@@ -2110,7 +2110,7 @@ h1, h2, h3, h4,
   color: var(--text-primary);
 }
 
-.chat-header h3 {
+.chat-header :is(h2, h3) {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
@@ -3595,9 +3595,25 @@ h1, h2, h3, h4,
 /* Edit Layout */
 .solutions-edit-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) rather than 1fr: a 1fr track carries an implicit
+     min-width:auto, so it refuses to shrink below its content's intrinsic
+     width. The code textarea has a natural width of ~427px, which forced the
+     whole modal body to scroll sideways on a phone. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   min-height: 400px;
+}
+
+.solutions-edit-problem,
+.solutions-edit-form {
+  min-width: 0;
+}
+
+/* A textarea sizes itself from its `cols` attribute unless told otherwise. */
+.solutions-edit-form textarea,
+.solutions-code-textarea {
+  width: 100%;
+  max-width: 100%;
 }
 
 .solutions-edit-problem {
@@ -3664,9 +3680,14 @@ h1, h2, h3, h4,
 
 .solutions-perf-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Same implicit min-width:auto trap as .solutions-edit-layout — two inputs
+     with a natural width of ~208px each refused to shrink into a 310px column
+     and pushed the whole modal body sideways on a phone. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
+
+.solutions-perf-row .form-group { min-width: 0; }
 
 /* View Modal */
 .solutions-view-modal {
@@ -3836,7 +3857,7 @@ h1, h2, h3, h4,
   }
 
   .solutions-edit-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .solutions-edit-problem {
@@ -3877,7 +3898,7 @@ h1, h2, h3, h4,
     word-break: break-word;
   }
 
-  .user-info h2 {
+  .user-info :is(h1, h2) {
     font-size: 20px;
   }
 
@@ -4011,7 +4032,7 @@ h1, h2, h3, h4,
     gap: 12px;
   }
 
-  .user-info h2 {
+  .user-info :is(h1, h2) {
     font-size: 17px;
   }
 
@@ -4109,10 +4130,6 @@ h1, h2, h3, h4,
 @media (max-width: 360px) {
   .game-title .title-line {
     font-size: 26px !important;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr !important;
   }
 
   .leaderboard-table .table-header,
@@ -5042,4 +5059,15 @@ table {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Form controls carry an intrinsic width (a text input defaults to ~20
+   characters). Inside a grid or flex track that width becomes a minimum and
+   silently forces horizontal overflow on narrow screens — which is exactly
+   what pushed the solution editor sideways on a phone. */
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
 }

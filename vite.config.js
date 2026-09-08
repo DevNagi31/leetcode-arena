@@ -25,6 +25,16 @@ export default defineConfig({
     },
   },
 
+  // `npm run preview` serves the production build. Without this it has no way
+  // to reach the API, so the previewed build could never log in.
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': { target: API_TARGET, changeOrigin: true },
+      '/socket.io': { target: API_TARGET, changeOrigin: true, ws: true },
+    },
+  },
+
   build: {
     // The Express server serves ../build in production, and render.yaml and
     // .gitignore both reference it — so keep CRA's output directory rather
