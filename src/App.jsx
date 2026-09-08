@@ -57,6 +57,7 @@ function App() {
   const [transitioning, setTransitioning] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [dark, setDark] = useDarkMode();
+  const [emailSent, setEmailSent] = useState(true);
   const toastSeq = useRef(0);
 
   // showToast is passed into effect dependency lists further down the tree
@@ -155,9 +156,9 @@ function App() {
       {view === 'auth-choice' && <AuthChoice onNavigate={changeView} />}
       {view === 'login' && <Login onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} showToast={showToast} />}
       {view === 'forgot-password' && <ForgotPassword onNavigate={changeView} showToast={showToast} />}
-      {view === 'signup' && <SignUp onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} />}
-      {view === 'verify-email' && currentUser && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} />}
-      {view === 'dashboard' && currentUser && needsVerification && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} />}
+      {view === 'signup' && <SignUp onNavigate={changeView} setToken={setToken} setCurrentUser={setCurrentUser} setError={setError} error={error} showToast={showToast} setEmailSent={setEmailSent} />}
+      {view === 'verify-email' && currentUser && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} emailSent={emailSent} />}
+      {view === 'dashboard' && currentUser && needsVerification && <EmailVerify onNavigate={changeView} currentUser={currentUser} setCurrentUser={setCurrentUser} onLogout={handleLogout} showToast={showToast} emailSent={emailSent} />}
       {view === 'dashboard' && currentUser && !needsVerification && <Dashboard user={currentUser} setUser={setCurrentUser} onNavigate={changeView} onLogout={handleLogout} showToast={showToast} dark={dark} setDark={setDark} />}
       {!isValidView && <NotFound onNavigate={changeView} />}
       </main>

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { authPost } from '../utils/api';
 
-export default function EmailVerify({ onNavigate, currentUser, setCurrentUser, onLogout, showToast }) {
+export default function EmailVerify({ onNavigate, currentUser, setCurrentUser, onLogout, showToast, emailSent = true }) {
   const [code, setCode] = useState('');
+  // Tracks whether the most recent send actually left the building, so we can
+  // explain an empty inbox instead of letting the user wait for nothing.
+  const [deliveryFailed, setDeliveryFailed] = useState(emailSent === false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
@@ -30,9 +33,11 @@ export default function EmailVerify({ onNavigate, currentUser, setCurrentUser, o
     setError('');
     try {
       await authPost('/auth/resend-verification');
+      setDeliveryFailed(false);
       showToast('A new code has been sent to your email.', 'success');
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to resend code';
+      if (err.response?.data?.emailSent === false) setDeliveryFailed(true);
       setError(msg);
       showToast(msg, 'error');
     } finally {
@@ -48,6 +53,18 @@ export default function EmailVerify({ onNavigate, currentUser, setCurrentUser, o
         <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.email}</strong>.
         Enter it below to activate your account.
       </p>
+      {deliveryFailed && (
+        <div className="notice-warning" role="alert">
+          <strong>We couldn't send that email.</strong> Your account was created,
+          so nothing is lost — try <em>Resend</em> below in a minute. If it still
+          doesn't arrive, the mail service needs attention.
+        </div>
+      )}
+      {!deliveryFailed && (
+        <p className="field-hint" style={{ textAlign: 'center', marginBottom: '14px' }}>
+          Not in your inbox? Check spam — and give it a minute before resending.
+        </p>
+      )}
       {error && <div className="error-message">{error}</div>}
       <form className="pixel-form" onSubmit={handleVerify}>
         <div className="form-group">
