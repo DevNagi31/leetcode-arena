@@ -85,7 +85,15 @@ export default function ActivityHeatmap({ activityDates }) {
             <div key={day} className="heatmap-day-label">{day}</div>
           ))}
         </div>
-        <div className="heatmap-inner">
+        {/* This scrolls horizontally on narrow screens, and a scrollable
+            region that can't be focused is unreachable by keyboard. The
+            desktop layout doesn't scroll, so this only shows up on a phone. */}
+        <div
+          className="heatmap-inner"
+          tabIndex={0}
+          role="group"
+          aria-label={`Activity heatmap, ${weeks.length} weeks. Scrollable.`}
+        >
           <div className="heatmap-months-row">
             {weeks.map((week, wi) => (
               <div key={wi} className="heatmap-month-cell">{monthLabels[wi] || ''}</div>

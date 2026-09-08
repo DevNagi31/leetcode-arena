@@ -99,6 +99,7 @@ export default function Leaderboard({ users, setUsers, onNavigate, currentUser, 
           </button>
         </div>
       )}
+      <h2 className="sr-only">Leaderboard</h2>
       <div className="leaderboard-tabs">
         <button className={`tab-button ${viewMode === 'global' ? 'active' : ''}`} onClick={() => handleViewChange('global')}><Globe size={16} /> GLOBAL</button>
         {currentUser && (

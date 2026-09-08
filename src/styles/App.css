@@ -4172,7 +4172,15 @@ h1, h2, h3, h4,
   .game-container { min-height: 100dvh; }
   .loading-screen { height: 100dvh; }
   .hero-section { min-height: 100dvh; }
-  .acc-sticky { height: 100dvh; }
+
+  /* Only while the section is actually pinned. Below 768px the sticky
+     behaviour is switched off and the cards stack, so forcing the container
+     to one viewport height clipped it to 100dvh while it held roughly three
+     times that — and with overflow visible the cards spilled out and
+     overlapped the section below. */
+  @media (min-width: 769px) {
+    .acc-sticky { height: 100dvh; }
+  }
 
   @media (max-width: 768px) {
     .chat-modal {
