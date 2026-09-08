@@ -110,7 +110,17 @@ mongoose.connection.on('disconnected', () => {
 // Health check
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  res.json({ status: 'ok', db: dbState, timestamp: new Date().toISOString() });
+  const { isEmailConfigured } = require('./services/email');
+  res.json({
+    status: 'ok',
+    db: dbState,
+    // Whether SMTP credentials are present. Without them the server falls back
+    // to logging messages to stdout, so signup completes but the verification
+    // code never leaves the box — which looks identical to "it went to spam"
+    // from the outside.
+    email: isEmailConfigured ? 'configured' : 'not configured',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Routes

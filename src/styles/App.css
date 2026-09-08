@@ -5133,3 +5133,15 @@ textarea {
     gap: 18px;
   }
 }
+
+/* A problem the user needs to understand, not a hard failure. */
+.notice-warning {
+  border: 1px solid var(--diff-medium);
+  background: color-mix(in srgb, var(--diff-medium) 12%, transparent);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}

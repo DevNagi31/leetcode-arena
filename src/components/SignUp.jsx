@@ -14,7 +14,7 @@ const passwordRules = (pw) => ({
 });
 const passwordMeetsRequirements = (pw) => Object.values(passwordRules(pw)).every(Boolean);
 
-export default function SignUp({ onNavigate, setToken, setCurrentUser, setError, error, showToast }) {
+export default function SignUp({ onNavigate, setToken, setCurrentUser, setError, error, showToast, setEmailSent }) {
   const [formData, setFormData] = useState({
     leetcodeUsername: '', username: '', email: '', password: '',
     country: '', educationLevel: '', institutionName: '', year: ''
@@ -79,7 +79,14 @@ export default function SignUp({ onNavigate, setToken, setCurrentUser, setError,
       localStorage.setItem('token', response.data.token);
       setToken(response.data.token);
       setCurrentUser(response.data.user);
-      showToast('Account created! Check your email for a verification code.', 'success');
+      const sent = response.data.emailSent !== false;
+      setEmailSent?.(sent);
+      showToast(
+        sent
+          ? 'Account created! Check your email for a verification code.'
+          : 'Account created, but we could not send the code. Try Resend.',
+        sent ? 'success' : 'warning'
+      );
       // Block until verified: route to the email verification step.
       onNavigate('verify-email');
     } catch (err) {

@@ -95,11 +95,15 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
 
     await user.save();
 
-    // Send the verification code out-of-band (errors don't block signup;
-    // the user can request a resend).
+    // Send the verification code out-of-band. A delivery failure doesn't block
+    // signup — the account is real and the code can be resent — but it is
+    // reported back so the client can say so, rather than leaving the user
+    // staring at an inbox that will never receive anything.
+    let emailSent = true;
     try {
       await sendVerificationCode(email, verificationCode);
     } catch (mailErr) {
+      emailSent = false;
       console.error('Failed to send verification email:', mailErr.message);
     }
 
@@ -112,6 +116,7 @@ router.post('/register', authLimiter, registerValidation, validate, async (req, 
 
     res.status(201).json({
       token,
+      emailSent,
       user: {
         id: user._id,
         username: user.username,
@@ -378,9 +383,15 @@ router.post('/resend-verification', auth, authLimiter, async (req, res) => {
       await sendVerificationCode(user.email, verificationCode);
     } catch (mailErr) {
       console.error('Failed to resend verification email:', mailErr.message);
+      // A resend is an explicit user action, so a failure here is worth a real
+      // error rather than a cheerful message about an email that never left.
+      return res.status(502).json({
+        message: 'We could not send the email just now. Please try again in a minute.',
+        emailSent: false
+      });
     }
 
-    res.json({ message: 'Verification code sent' });
+    res.json({ message: 'Verification code sent', emailSent: true });
   } catch (error) {
     console.error('Resend verification error:', error);
     res.status(500).json({ message: 'Failed to resend verification code' });
