@@ -33,6 +33,12 @@
   --diff-medium: #7a5600;
   --diff-hard: #a51b13;
   --rgb-gradient: linear-gradient(90deg, #ff5f6d, #ffc371, #47e891, #4facfe, #b96bff);
+
+  /* Layout scale, shared by every landing section so their edges agree. */
+  --content-wide: 1160px;    /* the feature row */
+  --content: 680px;          /* cards and panels */
+  --content-narrow: 560px;   /* hero and CTA */
+  --measure: 62ch;           /* readable line length for body copy */
 }
 
 [data-theme="dark"] {
@@ -119,9 +125,14 @@ h1, h2, h3, h4,
 
 /* Game Container */
 .game-container {
+  /* One source of truth for the page gutter. The landing page cancels this to
+     go full-bleed, so hardcoding the value in two places meant they drifted
+     apart at every breakpoint — content ended up 44px from the left edge and
+     18px from the right, which is why nothing looked centred on a phone. */
+  --page-gutter: 20px;
   min-height: 100vh;
   background: var(--bg-primary);
-  padding: 20px;
+  padding: var(--page-gutter);
   position: relative;
   z-index: 0;           /* stacking context so the cursor glow sits behind content */
 }
@@ -211,8 +222,9 @@ h1, h2, h3, h4,
 
 /* Landing Page — full-bleed scrolling page over a fixed video backdrop */
 .landing-page {
-  margin: -20px;
-  width: calc(100% + 40px);
+  /* Full-bleed: cancel exactly the gutter in force, whatever it currently is. */
+  margin: calc(var(--page-gutter) * -1);
+  width: calc(100% + var(--page-gutter) * 2);
   position: relative;
 }
 
@@ -288,7 +300,7 @@ h1, h2, h3, h4,
 /* Frosted card */
 .lp-card {
   width: 100%;
-  max-width: 680px;
+  max-width: var(--content);
   background: rgba(28, 20, 14, 0.52);
   border: 1px solid rgba(251, 242, 227, 0.12);
   border-radius: 22px;
@@ -344,7 +356,7 @@ h1, h2, h3, h4,
 .acc-inner {
   position: relative;
   width: 100%;
-  max-width: 1160px;
+  max-width: var(--content-wide);
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -371,6 +383,9 @@ h1, h2, h3, h4,
   text-shadow: 0 2px 18px rgba(43, 30, 20, 0.5);
 }
 .acc-head-sub {
+  max-width: var(--measure);
+  margin-left: auto;
+  margin-right: auto;
   margin-top: 14px;
   font-size: 16px;
   line-height: 1.6;
@@ -577,7 +592,7 @@ h1, h2, h3, h4,
 
 /* CTA */
 .cta-section { min-height: 80vh; }
-.cta-inner { display: flex; flex-direction: column; align-items: center; max-width: 560px; }
+.cta-inner { display: flex; flex-direction: column; align-items: center; max-width: var(--content-narrow); }
 .cta-icon { color: var(--accent-text); margin-bottom: 14px; }
 .cta-title {
   font-family: 'Fredoka', sans-serif;
@@ -616,7 +631,7 @@ h1, h2, h3, h4,
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 720px;
+  max-width: var(--content-narrow);
   animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -2413,7 +2428,7 @@ h1, h2, h3, h4,
 
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .game-container { padding: 12px; }
+  .game-container { --page-gutter: 12px; }
 
   .dashboard-header {
     flex-direction: row;
@@ -4011,7 +4026,7 @@ h1, h2, h3, h4,
 
 @media (max-width: 480px) {
   .game-container {
-    padding: 10px;
+    --page-gutter: 10px;
   }
 
   .game-title .title-line {
@@ -4019,10 +4034,8 @@ h1, h2, h3, h4,
     letter-spacing: -1.5px;
   }
 
-  .landing-page {
-    margin: 40px auto;
-    padding: 20px 16px;
-  }
+  /* (Removed: a boxed `margin: 40px auto` here predated the full-bleed video
+     hero and undid the negative-margin breakout below 480px.) */
 
   .dashboard-header {
     padding: 14px;
@@ -5078,4 +5091,45 @@ select,
 textarea {
   min-width: 0;
   max-width: 100%;
+}
+
+/* ===================================================================
+   LANDING ALIGNMENT
+   =================================================================== */
+
+/* Centred body copy is capped at a readable measure. Long centred lines are
+   the hardest to read: the eye has to find a ragged left edge on every
+   return, so the cost of over-wide text compounds. */
+.game-tagline,
+.acc-head-sub,
+.cta-lines,
+.acc-card-desc {
+  max-width: var(--measure);
+}
+
+.game-tagline,
+.acc-head-sub,
+.cta-lines {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Every landing section shares one horizontal rhythm. The feature row is the
+   one intentionally wide band; the rest sit on the narrow measure, so their
+   left and right edges agree down the page. */
+.lp-section {
+  padding-inline: clamp(18px, 5vw, 24px);
+}
+
+.acc-inner {
+  padding-inline: clamp(18px, 5vw, 24px);
+}
+
+/* The stats row is three numbers; below the narrow breakpoint they read better
+   stacked than squeezed into three cramped columns. */
+@media (max-width: 480px) {
+  .stats-card {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
 }
