@@ -5,9 +5,13 @@ const nodemailer = require('nodemailer');
 // without an external provider.
 let transporter = null;
 
-const isConfigured = Boolean(
-  process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
-);
+const REQUIRED_VARS = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'];
+
+/** Which required SMTP variables are absent or blank. Names only, no values. */
+const missingEmailVars = () =>
+  REQUIRED_VARS.filter((k) => !process.env[k] || !String(process.env[k]).trim());
+
+const isConfigured = missingEmailVars().length === 0;
 
 function getTransporter() {
   if (transporter) return transporter;
@@ -85,4 +89,10 @@ async function sendVerificationCode(to, code) {
   return sendEmail({ to, subject, text, html });
 }
 
-module.exports = { sendEmail, sendPasswordResetCode, sendVerificationCode, isEmailConfigured: isConfigured };
+module.exports = {
+  sendEmail,
+  sendPasswordResetCode,
+  sendVerificationCode,
+  isEmailConfigured: isConfigured,
+  missingEmailVars,
+};
