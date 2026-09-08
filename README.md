@@ -189,22 +189,71 @@ Create a free MongoDB Atlas cluster (Atlas → *Build a Database* → M0):
 
 ### 2. Set up email delivery
 
-Verification and password-reset codes are emailed. Without SMTP the server
-still runs, but codes are only printed to its log — so **nobody can finish
-signing up**. Any SMTP provider works; a Gmail account with an
-[App Password](https://myaccount.google.com/apppasswords) is the quickest:
+Verification and password-reset codes are emailed, and the dashboard is gated
+on verification — so if mail doesn't arrive, **nobody can finish signing up**.
+Without SMTP the server still runs, but codes are only written to its log.
+
+**Send through Gmail's own servers.** All six variables are required:
 
 ```
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=you@gmail.com
-SMTP_PASS=your-16-char-app-password
-EMAIL_FROM=you@gmail.com
+SMTP_PASS=your-16-char-app-password        # myaccount.google.com/apppasswords
+EMAIL_FROM=you@gmail.com                   # must match SMTP_USER
 ```
 
-For real traffic use a transactional provider (Resend, SendGrid, Mailgun,
-Postmark) — Gmail will rate-limit you.
+`EMAIL_FROM` is **not optional**. Without it the server falls back to
+`no-reply@leetcode-arena.local`, which is not a real domain and which no
+provider will accept — mail is then rejected at the SMTP layer while the
+connection and the credentials both look perfectly healthy.
+
+The App Password needs 2-Step Verification enabled on the Google account first.
+Afterwards check `/api/health`: it reports whether email is configured and
+names any variable still missing.
+
+#### Why the provider has to match the From address
+
+This is the part that silently ruins deliverability, so it's worth stating
+plainly. `gmail.com` publishes an SPF record authorising only Google's servers:
+
+```
+gmail.com          v=spf1 redirect=_spf.google.com
+_spf.google.com    ip4:74.125.0.0/16 ip4:209.85.128.0/17 ...
+_dmarc.gmail.com   v=DMARC1; p=none; sp=quarantine
+```
+
+Send as `you@gmail.com` through a third party such as Brevo or SendGrid and the
+mail leaves from an IP `gmail.com` does not authorise, signed by a domain that
+isn't `gmail.com`. **SPF fails, DKIM doesn't align, so DMARC fails.** The policy
+is `p=none` so it isn't hard-rejected, but receivers fall back to their own
+heuristics — and unauthenticated mail claiming to come from `gmail.com` is
+exactly what those are built to catch. It lands in spam, or is dropped.
+
+Sending through `smtp.gmail.com` means the mail genuinely originates from an
+authorised Google IP and is DKIM-signed as `gmail.com`, so both align and it
+reaches the inbox. Same From address, completely different outcome.
+
+#### Growing past it
+
+Gmail allows roughly **500 recipients a day**, and it is your personal mailbox's
+reputation at stake. Google tolerates this at low volume but will throttle it,
+so once there is real traffic, move to a domain you control:
+
+1. Register one — students can get a year free through the
+   [GitHub Student Developer Pack](https://education.github.com/pack)
+   (Namecheap `.me`, or name.com).
+2. Add it to a transactional provider (Brevo, Resend, SendGrid, Postmark) and
+   publish the SPF and DKIM records they give you, plus a DMARC record.
+3. Set `EMAIL_FROM=noreply@yourdomain.com` and point `SMTP_*` at that provider.
+
+The From domain and the sending infrastructure now agree, alignment passes, and
+you are no longer capped by a personal mailbox.
+
+Avoid free TLDs such as `.tk` or `.ml` here. Freenom stopped issuing them in
+2023, and their spam reputation means mail from them is filtered on sight —
+worse than sending nothing at all.
 
 ### 3. Deploy to Render
 
@@ -288,7 +337,7 @@ and will not see the migrated rows.
 | `PORT` | no | Defaults to `5001`; hosts usually inject this |
 | `NODE_ENV` | prod | `production` enables the SPA, CSP and HTTPS redirect |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USER` / `SMTP_PASS` | prod | Without these, codes only reach the server log |
-| `EMAIL_FROM` | prod | From address on outgoing mail |
+| `EMAIL_FROM` | prod | From address. **Required** — with Gmail it must match `SMTP_USER` |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | no | Set all three to store note photographs on Cloudinary instead of inline in MongoDB. See below |
 | `CLOUDINARY_FOLDER` | no | Upload folder; defaults to `leetcode-arena/notes` |
 | `VITE_API_URL` | no | Only when the API is on a different origin; baked in at build time |
@@ -321,9 +370,9 @@ don't see the button.
 
 ### Post-deploy checklist
 
-- [ ] `/api/health` reports `db: connected`
+- [ ] `/api/health` reports `db: connected` **and** `email: configured`, with no `emailMissing`
 - [ ] Sign up with a real LeetCode username — stats populate
-- [ ] The verification code actually arrives by email
+- [ ] The verification code actually arrives (check spam on the first one)
 - [ ] Password reset delivers a code
 - [ ] Two accounts can add each other and chat in real time
 - [ ] The leaderboard lists users
