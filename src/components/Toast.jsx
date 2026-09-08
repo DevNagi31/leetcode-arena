@@ -31,7 +31,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
     <div className={`toast ${type} ${isExiting ? 'exit' : ''}`}>
       <div className="toast-icon">{icons[type]}</div>
       <div className="toast-message">{message}</div>
-      <button className="toast-close" onClick={handleClose}>
+      <button className="toast-close" onClick={handleClose} aria-label="Dismiss notification">
         <X size={18} strokeWidth={2} />
       </button>
     </div>
