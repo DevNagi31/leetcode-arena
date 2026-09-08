@@ -5,7 +5,12 @@ const nodemailer = require('nodemailer');
 // without an external provider.
 let transporter = null;
 
-const REQUIRED_VARS = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'];
+// EMAIL_FROM belongs here. Providers only accept mail from a verified sender,
+// so without it every send is rejected at the SMTP layer — the credentials are
+// fine, the transport connects, and nothing is ever delivered. Treating it as
+// optional made the health check report "configured" while no mail could
+// possibly leave.
+const REQUIRED_VARS = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM'];
 
 /** Which required SMTP variables are absent or blank. Names only, no values. */
 const missingEmailVars = () =>
@@ -30,7 +35,10 @@ function getTransporter() {
     // No SMTP configured. In production this is a misconfiguration; elsewhere
     // we stream messages to the console so reset codes are still observable.
     if (process.env.NODE_ENV === 'production') {
-      console.error('EMAIL: SMTP is not configured; emails will not be delivered.');
+      console.error(
+        'EMAIL: not configured; messages will only be written to this log. Missing: '
+        + missingEmailVars().join(', ')
+      );
     }
     transporter = nodemailer.createTransport({ streamTransport: true, newline: 'unix', buffer: true });
   }
@@ -38,6 +46,9 @@ function getTransporter() {
   return transporter;
 }
 
+// The .local fallback exists only so development without SMTP still runs; it
+// is not a routable domain and no provider will accept it, so it must never be
+// used once real credentials are in play.
 const FROM = process.env.EMAIL_FROM || 'no-reply@leetcode-arena.local';
 
 /**
